@@ -30,7 +30,7 @@ Or copy it: xcopy "path/to/dataset" data /E /H /C /I
 
 
 ## Verify Setup:
-Test data loading:powershellpython -c "from src.prepare_dataset import load_dataset; images, labels = load_dataset(r'C:\EDL\EDL_Proj2\deepface\DATASET - To Students', label_depth=2); print(f'Loaded {len(images)} images')"
+Test data loading: python -c "from src.prepare_dataset import load_dataset; images, labels = load_dataset(r'path/to/dataset', label_depth=2); print(f'Loaded {len(images)} images')"
 Adjust label_depth (e.g., to 3) if emotions are deeper (e.g., .../train/happy/).
 
 
