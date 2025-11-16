@@ -1,0 +1,52 @@
+# YOLO Configuration for Facial Expression Recognition
+
+# Dataset configuration
+path: ../../dataset  # Root directory of the dataset (shared across all models)
+train: images/train  # Training images directory
+val: images/val  # Validation images directory
+test: images/test  # Test images directory (optional)
+
+# Class names (7 emotions)
+names:
+  0: angry
+  1: disgust
+  2: fear
+  3: happy
+  4: neutral
+  5: sad
+  6: surprised
+
+# Number of classes
+nc: 7
+
+# Model training parameters
+model: yolov8n.pt  # Can use yolov8n, yolov8s, yolov8m, yolov8l, yolov8x
+imgsz: 640  # Image size for training
+batch: 16  # Batch size
+epochs: 100  # Number of training epochs
+patience: 20  # Early stopping patience
+workers: 8  # Number of data loader workers
+
+# Optimization
+optimizer: Adam  # SGD, Adam, AdamW
+lr0: 0.001  # Initial learning rate
+momentum: 0.937  # Momentum
+weight_decay: 0.0005  # Weight decay
+
+# Augmentation
+hsv_h: 0.015  # HSV-Hue augmentation
+hsv_s: 0.7  # HSV-Saturation augmentation
+hsv_v: 0.4  # HSV-Value augmentation
+degrees: 0.0  # Image rotation (+/- degrees)
+translate: 0.1  # Image translation (+/- fraction)
+scale: 0.5  # Image scale (+/- gain)
+flipud: 0.0  # Vertical flip probability
+fliplr: 0.5  # Horizontal flip probability
+mosaic: 1.0  # Mosaic augmentation probability
+
+# Device
+device: ''  # cuda device, i.e. 0 or 0,1,2,3 or cpu
+
+# Validation/Test
+conf_thres: 0.25  # Confidence threshold
+iou_thres: 0.45  # NMS IoU threshold
