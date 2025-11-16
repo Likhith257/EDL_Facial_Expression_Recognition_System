@@ -1,0 +1,17 @@
+# Core dependencies for YOLO-based Facial Expression Recognition
+ultralytics
+torch
+torchvision
+opencv-python
+numpy
+pandas
+matplotlib
+seaborn
+pillow
+scikit-learn
+pyyaml
+tqdm
+
+# Optional for advanced features
+albumentations
+tensorboard

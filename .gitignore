@@ -1,1 +1,69 @@
+# macOS
 .DS_Store
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build artifacts
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+wheels/
+sdist/
+*.egg-info/
+*.egg
+.installed.cfg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+logs/
+
+# Large datasets and raw data
+DATASET - To Students/
+dataset/
+!dataset/data.yaml
+
+# Model artifacts and outputs
+runs/
+results/
+outputs/
+checkpoints/
+
+# Model weights/binaries
+*.pt
+*.pth
+*.onnx
+*.tflite
+*.engine
+
+# Ignore artifacts within models/* subprojects
+models/**/runs/
+models/**/results/
+models/**/outputs/
+models/**/__pycache__/
+models/**/checkpoints/
+models/**/weights/
+
+# Caches
+.pytest_cache/
+.cache/
+__pypackages__/
