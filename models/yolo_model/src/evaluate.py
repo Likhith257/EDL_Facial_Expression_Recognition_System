@@ -12,6 +12,11 @@ import cv2
 from sklearn.metrics import confusion_matrix, classification_report
 import pandas as pd
 
+# Resolve key paths relative to this file so script works from any CWD
+_THIS_FILE = Path(__file__).resolve()
+YOLO_ROOT = _THIS_FILE.parents[1]      # models/yolo_model
+PROJECT_ROOT = _THIS_FILE.parents[3]   # repo root
+
 
 class ModelEvaluator:
     def __init__(self, model_path, data_yaml):
@@ -375,9 +380,9 @@ def main():
     print("MODEL EVALUATION AND VISUALIZATION")
     print("=" * 60)
     
-    # Configuration
-    model_path = 'runs/train/facial_expression_yolov8n/weights/best.pt'
-    data_yaml = 'dataset/data.yaml'
+    # Configuration (paths made robust to CWD)
+    model_path = YOLO_ROOT / 'runs' / 'train' / 'facial_expression_yolov8n' / 'weights' / 'best.pt'
+    data_yaml = PROJECT_ROOT / 'dataset' / 'data.yaml'
     
     if not Path(model_path).exists():
         print(f"❌ Model not found: {model_path}")
@@ -391,17 +396,17 @@ def main():
     evaluator.evaluate(split='test')
     
     # Plot training curves
-    results_dir = 'runs/train/facial_expression_yolov8n'
+    results_dir = YOLO_ROOT / 'runs' / 'train' / 'facial_expression_yolov8n'
     if Path(results_dir).exists():
         evaluator.plot_training_curves(results_dir)
     
     # Visualize predictions
-    test_images_dir = 'dataset/images/test'
+    test_images_dir = PROJECT_ROOT / 'dataset' / 'images' / 'test'
     if Path(test_images_dir).exists():
         evaluator.visualize_predictions(test_images_dir, num_samples=16)
     
     # Analyze emotion distribution
-    evaluator.analyze_emotion_distribution('dataset')
+    evaluator.analyze_emotion_distribution(str(PROJECT_ROOT / 'dataset'))
     
     print(f"\n✅ Evaluation complete! Results saved to: {evaluator.output_dir}")
 

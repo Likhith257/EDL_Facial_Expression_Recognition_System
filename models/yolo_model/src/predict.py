@@ -8,6 +8,11 @@ import torch
 import argparse
 from datetime import datetime
 
+# Resolve key paths relative to this file so script works from any CWD
+_THIS_FILE = Path(__file__).resolve()
+YOLO_ROOT = _THIS_FILE.parents[1]      # models/yolo_model
+PROJECT_ROOT = _THIS_FILE.parents[3]   # repo root
+
 
 class FacialExpressionPredictor:
     def __init__(self, weights_path, conf_threshold=0.25):
@@ -310,8 +315,8 @@ def main():
     parser.add_argument(
         '--weights',
         type=str,
-        default='runs/train/facial_expression_yolov8n/weights/best.pt',
-        help='Path to trained model weights'
+        default=None,
+        help='Path to trained model weights (defaults to YOLO runs/best.pt)'
     )
     
     parser.add_argument(
@@ -336,15 +341,19 @@ def main():
     
     args = parser.parse_args()
     
+    # Determine weights path
+    default_weights = YOLO_ROOT / 'runs' / 'train' / 'facial_expression_yolov8n' / 'weights' / 'best.pt'
+    weights_path = Path(args.weights) if args.weights else default_weights
+
     # Check if weights exist
-    if not Path(args.weights).exists():
-        print(f"❌ Weights not found: {args.weights}")
+    if not weights_path.exists():
+        print(f"❌ Weights not found: {weights_path}")
         print("Please train the model first using train_model.py")
         return
     
     # Initialize predictor
     predictor = FacialExpressionPredictor(
-        weights_path=args.weights,
+        weights_path=str(weights_path),
         conf_threshold=args.conf
     )
     

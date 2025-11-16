@@ -9,6 +9,11 @@ from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import yaml
 
+# Resolve key paths relative to this file so script works from any CWD
+_THIS_FILE = Path(__file__).resolve()
+YOLO_ROOT = _THIS_FILE.parents[1]      # models/yolo_model
+PROJECT_ROOT = _THIS_FILE.parents[3]   # repo root
+
 # Emotion mapping
 EMOTION_MAPPING = {
     'angry': 0,
@@ -282,9 +287,9 @@ class DatasetPreparer:
 
 def main():
     """Main execution function."""
-    # Configuration
-    SOURCE_DIR = "DATASET - To Students"
-    OUTPUT_DIR = "dataset"
+    # Configuration: always reference project-level raw and output dataset
+    SOURCE_DIR = str((PROJECT_ROOT / "DATASET - To Students").resolve())
+    OUTPUT_DIR = str((PROJECT_ROOT / "dataset").resolve())
     
     print("🚀 Starting Dataset Preparation for YOLO")
     print("=" * 50)

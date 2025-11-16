@@ -8,9 +8,14 @@ import torch
 import matplotlib.pyplot as plt
 from datetime import datetime
 
+# Resolve key paths relative to this file so script works from any CWD
+_THIS_FILE = Path(__file__).resolve()
+YOLO_ROOT = _THIS_FILE.parents[1]      # models/yolo_model
+PROJECT_ROOT = _THIS_FILE.parents[3]   # repo root
+
 
 class FacialExpressionTrainer:
-    def __init__(self, data_yaml='dataset/data.yaml', model_size='yolov8n'):
+    def __init__(self, data_yaml=str((PROJECT_ROOT / 'dataset' / 'data.yaml').resolve()), model_size='yolov8n'):
         """
         Initialize the YOLO trainer for facial expression recognition.
         
@@ -24,7 +29,7 @@ class FacialExpressionTrainer:
         self.results = None
         
         # Create output directories
-        self.output_dir = Path('runs/train')
+        self.output_dir = (YOLO_ROOT / 'runs' / 'train')
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         # Check for GPU (CUDA for NVIDIA, MPS for Apple Silicon)
@@ -49,13 +54,15 @@ class FacialExpressionTrainer:
         print(f"\n📦 Loading {self.model_size} model...")
         
         if pretrained:
-            # Load pretrained model
-            model_path = f"{self.model_size}.pt"
+            # Load pretrained model (prefer local weights within YOLO folder)
+            local_weights = YOLO_ROOT / f"{self.model_size}.pt"
+            model_path = str(local_weights) if local_weights.exists() else self.model_size
             self.model = YOLO(model_path)
             print(f"✅ Loaded pretrained {self.model_size} model")
         else:
             # Load model architecture only
-            model_path = f"{self.model_size}.yaml"
+            arch_path = YOLO_ROOT / f"{self.model_size}.yaml"
+            model_path = str(arch_path) if arch_path.exists() else f"{self.model_size}.yaml"
             self.model = YOLO(model_path)
             print(f"✅ Loaded {self.model_size} architecture")
     
@@ -88,7 +95,7 @@ class FacialExpressionTrainer:
             'batch': batch_size,
             'imgsz': img_size,
             'device': self.device,
-            'project': 'runs/train',
+            'project': str(self.output_dir.parent),
             'name': f'facial_expression_{self.model_size}',
             'exist_ok': True,
             'patience': 20,  # Early stopping patience
