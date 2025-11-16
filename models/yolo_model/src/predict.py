@@ -306,8 +306,12 @@ class FacialExpressionPredictor:
         return stats
 
 
-def main():
-    """Main inference execution."""
+def main(model_size='yolov8n'):
+    """Main inference execution.
+    
+    Args:
+        model_size: YOLO model size to use (yolov8n, yolov8s, yolov8m, yolov8l, yolov8x)
+    """
     parser = argparse.ArgumentParser(
         description='Facial Expression Recognition using YOLO'
     )
@@ -341,14 +345,28 @@ def main():
     
     args = parser.parse_args()
     
-    # Determine weights path
-    default_weights = YOLO_ROOT / 'runs' / 'train' / 'facial_expression_yolov8n' / 'weights' / 'best.pt'
-    weights_path = Path(args.weights) if args.weights else default_weights
-
+    # Determine weights path - try multiple possible locations
+    possible_paths = [
+        YOLO_ROOT / 'runs' / 'train' / f'facial_expression_{model_size}' / 'weights' / 'best.pt',
+        YOLO_ROOT / 'runs' / f'facial_expression_{model_size}' / 'weights' / 'best.pt',
+    ]
+    
+    if args.weights:
+        weights_path = Path(args.weights)
+    else:
+        weights_path = None
+        for path in possible_paths:
+            if path.exists():
+                weights_path = path
+                break
+    
     # Check if weights exist
-    if not weights_path.exists():
-        print(f"❌ Weights not found: {weights_path}")
-        print("Please train the model first using train_model.py")
+    if weights_path is None or not weights_path.exists():
+        print(f"❌ Weights not found in any of these locations:")
+        for path in possible_paths:
+            print(f"   • {path}")
+        print(f"\nPlease train the {model_size} model first using:")
+        print(f"   python main.py --train --model {model_size}")
         return
     
     # Initialize predictor

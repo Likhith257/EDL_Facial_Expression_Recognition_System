@@ -222,23 +222,26 @@ class FacialExpressionTrainer:
         print("✅ Checkpoint loaded. Call train() to continue training.")
 
 
-def main():
-    """Main training execution."""
-    print("=" * 60)
-    print("YOLO FACIAL EXPRESSION RECOGNITION - TRAINING")
+def main(model_size='yolov8n'):
+    """Main training function.
+    
+    Args:
+        model_size: YOLO model size (yolov8n, yolov8s, yolov8m, yolov8l, yolov8x)
+    """
+    print("\n🚀 Starting Facial Expression Recognition Training Pipeline")
     print("=" * 60)
     
-    # Check if dataset exists
-    data_yaml = 'dataset/data.yaml'
-    if not Path(data_yaml).exists():
+    # Check if dataset exists (use absolute path)
+    data_yaml = PROJECT_ROOT / 'dataset' / 'data.yaml'
+    if not data_yaml.exists():
         print(f"\n❌ Dataset not found at {data_yaml}")
         print("Please run prepare_dataset.py first to prepare the dataset.")
         return
     
     # Initialize trainer
     trainer = FacialExpressionTrainer(
-        data_yaml=data_yaml,
-        model_size='yolov8n'  # Options: yolov8n, yolov8s, yolov8m, yolov8l, yolov8x
+        data_yaml=str(data_yaml),
+        model_size=model_size
     )
     
     # Load pretrained model

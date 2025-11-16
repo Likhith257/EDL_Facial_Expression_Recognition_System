@@ -374,20 +374,38 @@ class ModelEvaluator:
         return None
 
 
-def main():
-    """Main evaluation execution."""
+def main(model_size='yolov8n'):
+    """Main evaluation execution.
+    
+    Args:
+        model_size: YOLO model size used for training (yolov8n, yolov8s, yolov8m, yolov8l, yolov8x)
+    """
     print("=" * 60)
     print("MODEL EVALUATION AND VISUALIZATION")
     print("=" * 60)
     
     # Configuration (paths made robust to CWD)
-    model_path = YOLO_ROOT / 'runs' / 'train' / 'facial_expression_yolov8n' / 'weights' / 'best.pt'
-    data_yaml = PROJECT_ROOT / 'dataset' / 'data.yaml'
+    # Try multiple possible locations for the model
+    possible_paths = [
+        YOLO_ROOT / 'runs' / 'train' / f'facial_expression_{model_size}' / 'weights' / 'best.pt',
+        YOLO_ROOT / 'runs' / f'facial_expression_{model_size}' / 'weights' / 'best.pt',
+    ]
     
-    if not Path(model_path).exists():
-        print(f"❌ Model not found: {model_path}")
-        print("Please train the model first.")
+    model_path = None
+    for path in possible_paths:
+        if path.exists():
+            model_path = path
+            break
+    
+    if model_path is None:
+        print(f"❌ Model not found in any of these locations:")
+        for path in possible_paths:
+            print(f"   • {path}")
+        print(f"\nPlease train the {model_size} model first using:")
+        print(f"   python main.py --train --model {model_size}")
         return
+    
+    data_yaml = PROJECT_ROOT / 'dataset' / 'data.yaml'
     
     # Initialize evaluator
     evaluator = ModelEvaluator(model_path, data_yaml)
@@ -396,8 +414,8 @@ def main():
     evaluator.evaluate(split='test')
     
     # Plot training curves
-    results_dir = YOLO_ROOT / 'runs' / 'train' / 'facial_expression_yolov8n'
-    if Path(results_dir).exists():
+    results_dir = model_path.parent.parent  # Go up from weights/best.pt to the run directory
+    if results_dir.exists():
         evaluator.plot_training_curves(results_dir)
     
     # Visualize predictions
