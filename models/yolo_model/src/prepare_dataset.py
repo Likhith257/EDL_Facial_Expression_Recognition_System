@@ -1,6 +1,7 @@
 """Dataset preparation: scan raw folders, detect faces, write YOLO labels."""
 
 import os
+import re
 import cv2
 import shutil
 import numpy as np
@@ -81,6 +82,47 @@ class DatasetPreparer:
                     return k
         
         return None
+
+    def infer_emotion_from_path(self, img_path: Path):
+        """Infer emotion label from parent folders or filename tokens.
+
+        Priority:
+        1) Any parent folder that maps to an emotion
+        2) Abbreviation tokens in filename like -FE-, (HA), _NE_, etc.
+        3) Full emotion words in filename
+        Returns normalized full-name emotion or None.
+        """
+        # 1) From parent folders
+        for parent in img_path.parents:
+            # stop at project root
+            if parent == PROJECT_ROOT:
+                break
+            em = self.normalize_emotion_name(parent.name)
+            if em:
+                return em
+
+        # 2) From filename tokens (abbreviations)
+        stem = img_path.stem
+        name_upper = stem.upper()
+        # Look for standalone tokens between separators or in parentheses
+        # e.g., -FE-, _HA_, (NE), 01-SA-03
+        token_match = re.search(r"(?<![A-Z0-9])(AN|DI|FE|HA|NE|SA|SU)(?![A-Z0-9])", name_upper)
+        if token_match:
+            abbr = token_match.group(1)
+            # Map to full name using EMOTION_MAPPING
+            emotion_id = EMOTION_MAPPING.get(abbr)
+            if emotion_id is not None:
+                for k, v in EMOTION_MAPPING.items():
+                    if v == emotion_id and len(k) > 2:
+                        return k
+
+        # 3) Full emotion words in filename
+        name_lower = stem.lower()
+        for emotion in ['angry', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprised']:
+            if emotion in name_lower:
+                return emotion
+
+        return None
     
     def detect_face(self, image):
         """
@@ -160,22 +202,24 @@ class DatasetPreparer:
             return False
     
     def scan_directory(self, directory):
-        """Scan directory for emotion-labeled images."""
+        """Scan directory for images and infer emotion labels.
+
+        Includes images either placed under emotion-named folders or whose
+        filenames contain recognizable emotion abbreviations/words.
+        """
         image_files = []
-        
+        VALID_EXT = {'.jpg', '.jpeg', '.png', '.bmp', '.webp', '.heic', '.tiff'}
+
         for root, dirs, files in os.walk(directory):
-            # Check if current directory is an emotion folder
-            dir_name = os.path.basename(root)
-            emotion = self.normalize_emotion_name(dir_name)
-            
-            if emotion:
-                # Process images in this emotion folder
-                for file in files:
-                    if file.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp')):
-                        img_path = Path(root) / file
+            for file in files:
+                ext = os.path.splitext(file)[1].lower()
+                if ext in VALID_EXT:
+                    img_path = Path(root) / file
+                    emotion = self.infer_emotion_from_path(img_path)
+                    if emotion:
                         image_files.append((img_path, emotion))
-                        self.stats['total_images'] += 1
-        
+                    self.stats['total_images'] += 1
+
         return image_files
     
     def prepare_dataset(self, test_size=0.2, val_size=0.1):
