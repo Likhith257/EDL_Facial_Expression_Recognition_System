@@ -15,13 +15,13 @@ def check_dependencies(framework='yolo'):
             'ultralytics', 'torch', 'cv2', 'numpy', 
             'sklearn', 'matplotlib', 'pandas'
         ]
-        requirements_path = "models/yolo_model/requirements.txt"
     else:  # arcface
         required_packages = [
             'torch', 'cv2', 'numpy', 
             'sklearn', 'matplotlib', 'pandas'
         ]
-        requirements_path = "models/arcface_model/requirements.txt"
+    
+    requirements_path = "requirements.txt"
     
     missing_packages = []
     for package in required_packages:
@@ -135,8 +135,8 @@ Available YOLO model sizes:
         '--framework',
         type=str,
         default='yolo',
-        choices=['yolo', 'arcface'],
-        help='Choose framework: yolo or arcface (default: yolo)'
+        choices=['yolo', 'arcface', 'yolov8n', 'yolov8s', 'yolov8m', 'yolov8l', 'yolov8x'],
+        help='Choose framework: yolo, arcface, or yolov8[n/s/m/l/x] as shorthand (default: yolo)'
     )
     
     parser.add_argument(
@@ -184,6 +184,11 @@ Available YOLO model sizes:
     )
     
     args = parser.parse_args()
+    
+    # Handle shorthand: if framework is a yolo model size, extract it
+    if args.framework.startswith('yolov8'):
+        args.model = args.framework
+        args.framework = 'yolo'
     
     # Check dependencies
     if not args.skip_deps:
