@@ -108,10 +108,10 @@ def run_inference(framework='yolo', model_size='yolov8n'):
 
 def main():
     """Main execution function."""
-        parser = argparse.ArgumentParser(
-            description='Facial Expression Recognition System',
-            formatter_class=argparse.RawDescriptionHelpFormatter
-        )
+    parser = argparse.ArgumentParser(
+        description='Facial Expression Recognition System',
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     
     parser.add_argument(
         '--framework',
@@ -172,9 +172,11 @@ def main():
         args.framework = 'yolo'
     elif args.framework in ['efficientnetb3']:
         args.framework = 'efficientnet'
+    
     if not args.skip_deps:
         if not check_dependencies(framework=args.framework):
             return
+    
     print("=" * 60)
     print("FACIAL EXPRESSION RECOGNITION SYSTEM")
     if args.framework == 'yolo':
