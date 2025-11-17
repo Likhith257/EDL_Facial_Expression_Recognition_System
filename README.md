@@ -1,6 +1,10 @@
-# Facial Expression Recognition (Group Project)
+- Saumitra Purkayastha
+- Sundareshwar S
+- Tenzin Kunga
 
-Collaborative project exploring multiple models for facial expression recognition. The YOLO-based implementation is organized under `models/yolo_model/`. Add your own models under `models/` without affecting others.
+See the [LICENSE](LICENSE) file for full contributor and copyright details.
+
+---
 
 ## Repository Structure
 

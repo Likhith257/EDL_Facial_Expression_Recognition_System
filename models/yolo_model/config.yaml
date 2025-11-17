@@ -1,6 +1,3 @@
-# YOLO Configuration for Facial Expression Recognition
-
-# Dataset configuration
 path: ../../dataset  # Root directory of the dataset (shared across all models)
 train: images/train  # Training images directory
 val: images/val  # Validation images directory

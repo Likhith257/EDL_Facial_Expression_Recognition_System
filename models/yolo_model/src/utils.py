@@ -1,5 +1,3 @@
-"""Utility helpers (config, drawing, system info)."""
-
 import cv2
 import numpy as np
 from pathlib import Path

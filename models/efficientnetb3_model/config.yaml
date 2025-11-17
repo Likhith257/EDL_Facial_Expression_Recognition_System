@@ -1,0 +1,45 @@
+
+# Dataset
+dataset_path: ../../dataset
+num_classes: 7
+
+# Training
+batch_size: 32
+epochs: 100
+lr: 0.001
+weight_decay: 0.01
+patience: 15  # Early stopping patience
+
+# Model
+img_size: 224
+dropout: 0.3
+pretrained: true
+
+# Data Augmentation
+augmentation:
+  random_flip: 0.5
+  random_rotation: 10
+  color_jitter:
+    brightness: 0.2
+    contrast: 0.2
+    saturation: 0.2
+
+# Device
+device: mps  # mps for Apple Silicon, cuda for NVIDIA, cpu for CPU
+
+# Optimizer
+optimizer: AdamW
+scheduler: CosineAnnealingWarmRestarts
+scheduler_params:
+  T_0: 10
+  T_mult: 2
+
+# Class names
+class_names:
+  - angry
+  - disgust
+  - fear
+  - happy
+  - neutral
+  - sad
+  - surprised

@@ -1,5 +1,3 @@
-"""Dataset preparation: scan raw folders, detect faces, write YOLO labels."""
-
 import os
 import re
 import cv2
@@ -10,10 +8,9 @@ from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import yaml
 
-# Resolve key paths relative to this file so script works from any CWD
 _THIS_FILE = Path(__file__).resolve()
-YOLO_ROOT = _THIS_FILE.parents[1]      # models/yolo_model
-PROJECT_ROOT = _THIS_FILE.parents[3]   # repo root
+YOLO_ROOT = _THIS_FILE.parents[1]
+PROJECT_ROOT = _THIS_FILE.parents[3]
 
 # Emotion mapping
 EMOTION_MAPPING = {
