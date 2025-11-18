@@ -63,7 +63,7 @@ class FacialExpressionTrainer:
             self.model = YOLO(model_path)
             print(f"✅ Loaded {self.model_size} architecture")
     
-    def train(self, epochs=100, batch_size=16, img_size=640, **kwargs):
+    def train(self, epochs=50, batch_size=16, img_size=640, memory_profile='default', **kwargs):
         """
         Train the YOLO model.
         
@@ -80,8 +80,9 @@ class FacialExpressionTrainer:
         print("\n🚀 Starting training...")
         print("=" * 60)
         print(f"Epochs: {epochs}")
-        print(f"Batch size: {batch_size}")
-        print(f"Image size: {img_size}")
+        print(f"Batch size (requested): {batch_size}")
+        print(f"Image size (requested): {img_size}")
+        print(f"Memory profile: {memory_profile}")
         print(f"Device: {self.device}")
         print("=" * 60)
         
@@ -125,6 +126,30 @@ class FacialExpressionTrainer:
             'conf': 0.25,
             'iou': 0.45,
         }
+
+        # Adjust for memory profile
+        if memory_profile == 'low':
+            train_params['batch'] = min(batch_size, 8)
+            train_params['imgsz'] = min(img_size, 512)
+            train_params['workers'] = 2
+            train_params['mosaic'] = 0.0
+            train_params['mixup'] = 0.0
+            train_params['cache'] = False
+            train_params['amp'] = True  # mixed precision
+        elif memory_profile == 'medium':
+            train_params['batch'] = min(batch_size, 12)
+            train_params['imgsz'] = min(img_size, 576)
+            train_params['workers'] = 4
+            train_params['mosaic'] = 0.2
+            train_params['mixup'] = 0.0
+            train_params['cache'] = False
+            train_params['amp'] = True
+        elif memory_profile == 'high':
+            # Allow larger settings; user must have sufficient RAM/GPU
+            train_params['workers'] = 8
+            train_params['cache'] = 'ram'
+            train_params['amp'] = True
+
         
         # Override with custom parameters
         train_params.update(kwargs)
@@ -219,7 +244,7 @@ class FacialExpressionTrainer:
         print("✅ Checkpoint loaded. Call train() to continue training.")
 
 
-def main(model_size='yolov8n'):
+def main(model_size='yolov8n', memory_profile='default'):
     """Main training function.
     
     Args:
@@ -246,9 +271,10 @@ def main(model_size='yolov8n'):
     
     # Train model
     trainer.train(
-        epochs=100,
+        epochs=50,
         batch_size=16,
         img_size=640,
+        memory_profile=memory_profile,
     )
     
     # Validate model

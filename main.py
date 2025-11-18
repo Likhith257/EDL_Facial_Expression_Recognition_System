@@ -61,14 +61,14 @@ def prepare_dataset(framework='yolo'):
         print("Use YOLO dataset preparation: python main.py --framework yolo --prepare")
 
 
-def train_model(framework='yolo', model_size='yolov8n'):
+def train_model(framework='yolo', model_size='yolov8n', memory_profile='default'):
     """Run model training."""
     print("\n" + "=" * 60)
     print(f"STEP 2: TRAINING MODEL ({framework.upper()}: {model_size})")
     print("=" * 60)
     if framework == 'yolo':
         from models.yolo_model.src.train_model import main as train_main
-        train_main(model_size=model_size)
+        train_main(model_size=model_size, memory_profile=memory_profile)
     elif framework in ['efficientnet', 'efficientnetb3']:
         from models.efficientnetb3_model.src.train import main as train_main
         train_main()
@@ -158,6 +158,14 @@ def main():
         choices=['yolov8n', 'yolov8s', 'yolov8m', 'yolov8l', 'yolov8x'],
         help='YOLO model size (default: yolov8n). Only used with --framework yolo'
     )
+
+    parser.add_argument(
+        '--mem-profile',
+        type=str,
+        default='default',
+        choices=['low', 'medium', 'high', 'default'],
+        help='Memory profile for YOLO training: low, medium, high, default'
+    )
     
     parser.add_argument(
         '--skip-deps',
@@ -194,14 +202,14 @@ def main():
     # Run requested operations
     if args.all:
         prepare_dataset(framework=args.framework)
-        train_model(framework=args.framework, model_size=args.model)
+        train_model(framework=args.framework, model_size=args.model, memory_profile=args.mem_profile)
         evaluate_model(framework=args.framework, model_size=args.model)
     else:
         if args.prepare:
             prepare_dataset(framework=args.framework)
         
         if args.train:
-            train_model(framework=args.framework, model_size=args.model)
+            train_model(framework=args.framework, model_size=args.model, memory_profile=args.mem_profile)
         
         if args.evaluate:
             evaluate_model(framework=args.framework, model_size=args.model)

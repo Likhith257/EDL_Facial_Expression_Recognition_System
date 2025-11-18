@@ -297,7 +297,7 @@ def main():
         dataset_path=str(DATASET_PATH),
         num_classes=7,
         batch_size=32,
-        epochs=100,
+        epochs=50,
         lr=0.001,
         img_size=224,
         patience=15,
