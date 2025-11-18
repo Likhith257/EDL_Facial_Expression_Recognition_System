@@ -1,3 +1,5 @@
+- Thanish Chinappa K.C.
+- Likhith
 - Saumitra Purkayastha
 - Sundareshwar S
 - Tenzin Kunga

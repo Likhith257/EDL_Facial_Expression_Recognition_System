@@ -62,12 +62,16 @@ def get_transforms(split='train', img_size=224):
     """Get data transforms"""
     if split == 'train':
         return transforms.Compose([
-            transforms.Resize((img_size, img_size)),
+            transforms.Resize((img_size + 32, img_size + 32)),
+            transforms.RandomCrop((img_size, img_size)),
             transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomRotation(10),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+            transforms.RandomRotation(15),
+            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+            transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
+            transforms.RandomGrayscale(p=0.1),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.RandomErasing(p=0.2)
         ])
     else:
         return transforms.Compose([
@@ -77,7 +81,7 @@ def get_transforms(split='train', img_size=224):
         ])
 
 
-def train_epoch(model, train_loader, criterion, optimizer, device, epoch):
+def train_epoch(model, train_loader, criterion, optimizer, device, epoch, scaler=None):
     """Train for one epoch"""
     model.train()
     running_loss = 0.0
@@ -91,13 +95,22 @@ def train_epoch(model, train_loader, criterion, optimizer, device, epoch):
         # Zero gradients
         optimizer.zero_grad()
         
-        # Forward pass
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
-        
-        # Backward pass
-        loss.backward()
-        optimizer.step()
+        # Forward pass with mixed precision
+        if scaler:
+            with torch.cuda.amp.autocast():
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
         
         # Statistics
         running_loss += loss.item()
@@ -209,10 +222,23 @@ def train(config_path=None, **kwargs):
     model = create_model(num_classes=num_classes, pretrained=True, device=device_type)
     print(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
     
-    # Loss and optimizer
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
-    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
+    # Loss and optimizer with label smoothing
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.05, betas=(0.9, 0.999))
+    
+    # Warmup + Cosine scheduler
+    warmup_epochs = 5
+    total_steps = len(train_loader) * num_epochs
+    warmup_steps = len(train_loader) * warmup_epochs
+    
+    def lr_lambda(current_step):
+        if current_step < warmup_steps:
+            return float(current_step) / float(max(1, warmup_steps))
+        progress = float(current_step - warmup_steps) / float(max(1, total_steps - warmup_steps))
+        return max(0.01, 0.5 * (1.0 + np.cos(np.pi * progress)))
+    
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+    scaler = torch.cuda.amp.GradScaler() if device.type == 'cuda' else None
     
     # Training loop
     print(f"\n🎯 Starting training for {num_epochs} epochs...")
@@ -227,7 +253,7 @@ def train(config_path=None, **kwargs):
     for epoch in range(1, num_epochs + 1):
         # Train
         train_loss, train_acc = train_epoch(
-            model, train_loader, criterion, optimizer, device, epoch
+            model, train_loader, criterion, optimizer, device, epoch, scaler
         )
         
         # Validate
@@ -235,8 +261,12 @@ def train(config_path=None, **kwargs):
             model, val_loader, criterion, device, epoch
         )
         
-        # Update scheduler
-        scheduler.step()
+        # Update scheduler per batch (for warmup)
+        if epoch <= warmup_epochs:
+            for _ in range(len(train_loader)):
+                scheduler.step()
+        else:
+            scheduler.step()
         
         # Save history
         history['train_loss'].append(train_loss)
@@ -297,10 +327,10 @@ def main():
         dataset_path=str(DATASET_PATH),
         num_classes=7,
         batch_size=32,
-        epochs=50,
-        lr=0.001,
+        epochs=100,
+        lr=0.0001,
         img_size=224,
-        patience=15,
+        patience=30,
         device='mps'
     )
 
