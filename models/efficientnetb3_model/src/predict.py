@@ -8,8 +8,7 @@ from torchvision import transforms
 from PIL import Image
 import yaml
 
-sys.path.append(str(Path(__file__).parent))
-from model import create_model
+from .model import create_model
 
 
 class EmotionPredictor:

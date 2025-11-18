@@ -14,9 +14,8 @@ import yaml
 import json
 from datetime import datetime
 
-# Add parent directory to path
-sys.path.append(str(Path(__file__).parent))
-from model import create_model
+# Use relative imports
+from .model import create_model
 
 
 class FacialExpressionDataset(Dataset):

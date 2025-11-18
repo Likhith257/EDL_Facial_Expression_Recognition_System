@@ -12,9 +12,8 @@ from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-sys.path.append(str(Path(__file__).parent))
-from model import create_model
-from train import FacialExpressionDataset, get_transforms
+from .model import create_model
+from .train import FacialExpressionDataset, get_transforms
 
 
 def evaluate_model(model, test_loader, device, class_names):
