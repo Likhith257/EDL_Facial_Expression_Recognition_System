@@ -1,4 +1,4 @@
-- Thanish Chinappa K.C.
+- Thanish Chinnappa KC
 - Likhith
 - Saumitra Purkayastha
 - Sundareshwar S
