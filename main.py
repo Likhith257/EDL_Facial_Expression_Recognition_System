@@ -121,6 +121,96 @@ def run_inference(framework='yolo', model_size='yolov8n'):
         print("Inference not yet implemented for this framework")
 
 
+def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
+    """Start web server with API and frontend."""
+    try:
+        from fastapi import FastAPI, File, UploadFile
+        from fastapi.responses import JSONResponse, FileResponse
+        from fastapi.staticfiles import StaticFiles
+        from fastapi.middleware.cors import CORSMiddleware
+        import uvicorn
+    except ImportError:
+        print("Web server dependencies not installed.")
+        print("Install them using: pip install fastapi uvicorn python-multipart")
+        return
+    
+    print("\n" + "=" * 60)
+    print(f"STARTING WEB SERVER ({framework.upper()}: {model_size})")
+    print("=" * 60)
+    
+    app = FastAPI(title="Facial Expression Recognition API")
+    
+    # Enable CORS
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
+    # Serve frontend static files
+    frontend_dist = Path("frontend/dist/spa")
+    if frontend_dist.exists() and (frontend_dist / "index.html").exists():
+        # Mount assets directory
+        assets_dir = frontend_dist / "assets"
+        if assets_dir.exists():
+            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+        
+        @app.get("/")
+        async def serve_frontend():
+            return FileResponse(str(frontend_dist / "index.html"))
+        
+        @app.get("/favicon.ico")
+        async def serve_favicon():
+            favicon_path = frontend_dist / "favicon.ico"
+            if favicon_path.exists():
+                return FileResponse(str(favicon_path))
+            return JSONResponse(content={"error": "Not found"}, status_code=404)
+    else:
+        print(f"Warning: Frontend build not found at {frontend_dist}")
+        print("Build the frontend first: cd frontend && npm install && npm run build")
+    
+    @app.get("/api/health")
+    async def health_check():
+        return {"status": "ok", "framework": framework, "model": model_size}
+    
+    @app.post("/api/predict")
+    async def predict_expression(file: UploadFile = File(...)):
+        """Predict facial expression from uploaded image."""
+        import tempfile
+        import os
+        
+        # Save uploaded file temporarily
+        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+        
+        try:
+            # TODO: Implement actual prediction logic
+            # For now, return a placeholder response
+            result = {
+                "expression": "happy",
+                "confidence": 0.85,
+                "framework": framework,
+                "model": model_size
+            }
+            return JSONResponse(content=result)
+        finally:
+            # Clean up temp file
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+    
+    print(f"\nServer starting on http://localhost:{port}")
+    print("API documentation: http://localhost:{port}/docs")
+    if frontend_dist.exists():
+        print(f"Frontend: http://localhost:{port}")
+    print("\nPress Ctrl+C to stop the server\n")
+    
+    uvicorn.run(app, host="0.0.0.0", port=port)
+
+
 def main():
     """Main execution function."""
     parser = argparse.ArgumentParser(
@@ -164,6 +254,19 @@ def main():
         '--predict',
         action='store_true',
         help='Run inference'
+    )
+    
+    parser.add_argument(
+        '--serve',
+        action='store_true',
+        help='Start web server with API and frontend'
+    )
+    
+    parser.add_argument(
+        '--port',
+        type=int,
+        default=8000,
+        help='Port for web server (default: 8000)'
     )
     
     parser.add_argument(
@@ -217,6 +320,10 @@ def main():
     print("=" * 60)
     
     # Run requested operations
+    if args.serve:
+        serve_web_app(framework=args.framework, model_size=args.model, port=args.port)
+        return
+    
     if args.all:
         prepare_dataset(framework=args.framework)
         train_model(framework=args.framework, model_size=args.model, memory_profile=args.mem_profile)
@@ -234,7 +341,7 @@ def main():
         if args.predict:
             run_inference(framework=args.framework, model_size=args.model)
     
-    if not any([args.all, args.prepare, args.train, args.evaluate, args.predict]):
+    if not any([args.all, args.prepare, args.train, args.evaluate, args.predict, args.serve]):
         parser.print_help()
 
 

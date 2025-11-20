@@ -78,6 +78,71 @@ Classes: angry, disgust, fear, happy, neutral, sad, surprised.
 
 Ultralytics will auto-detect CUDA/MPS if available. To force CPU/GPU, set the `device` field in the YOLO `config.yaml` (e.g., `device: 0` for first GPU, `device: cpu` for CPU).
 
+## Web Interface
+
+A React + Vite frontend is available in the `frontend/` directory.
+
+### Setup & Development
+
+1) Navigate to the frontend directory:
+
+```bash
+cd frontend
+```
+
+2) Install dependencies (using npm or pnpm):
+
+```bash
+npm install
+# or
+pnpm install
+```
+
+3) Run the development server:
+
+```bash
+npm run dev
+# or
+pnpm dev
+```
+
+4) Build for production:
+
+```bash
+npm run build
+# or
+pnpm build
+```
+
+### Running with Backend
+
+To serve the built frontend with the FastAPI backend:
+
+1) Build the frontend (from the `frontend/` directory):
+
+```bash
+npm run build
+```
+
+2) Install web server dependencies (from the project root):
+
+```bash
+pip install fastapi uvicorn python-multipart
+```
+
+3) Start the web server (from the project root):
+
+```bash
+python main.py --serve
+# Or specify a custom port:
+python main.py --serve --port 8080
+```
+
+The server will:
+- Serve the frontend at `http://localhost:8000`
+- Provide API endpoints at `http://localhost:8000/api/`
+- Show API documentation at `http://localhost:8000/docs`
+
 ## License
 
 See `LICENSE` for details.

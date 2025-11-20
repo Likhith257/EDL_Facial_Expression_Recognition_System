@@ -15,3 +15,8 @@ tqdm
 # Optional for advanced features
 albumentations
 tensorboard
+
+# Web server dependencies (for --serve mode)
+fastapi
+uvicorn
+python-multipart

@@ -9,6 +9,7 @@ __pycache__/
 # Build artifacts
 build/
 dist/
+!frontend/dist/
 downloads/
 eggs/
 .eggs/
@@ -25,7 +26,9 @@ env/
 ENV/
 
 # IDE/editor files
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
 .idea/
 *.swp
 *.swo
