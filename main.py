@@ -180,6 +180,9 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
         """Predict facial expression from uploaded image."""
         import tempfile
         import os
+        import cv2
+        import numpy as np
+        from ultralytics import YOLO
         
         # Save uploaded file temporarily
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(file.filename).suffix) as tmp:
@@ -188,15 +191,92 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
             tmp_path = tmp.name
         
         try:
-            # TODO: Implement actual prediction logic
-            # For now, return a placeholder response
-            result = {
-                "expression": "happy",
-                "confidence": 0.85,
-                "framework": framework,
-                "model": model_size
-            }
-            return JSONResponse(content=result)
+            # Load the trained model
+            if framework == 'yolo':
+                weights_path = Path(f"models/yolo_model/runs/facial_expression_{model_size}/weights/best.pt")
+                if not weights_path.exists():
+                    return JSONResponse(
+                        content={
+                            "error": "Model weights not found. Please train the model first.",
+                            "path": str(weights_path)
+                        },
+                        status_code=404
+                    )
+                
+                # Load model and predict
+                model = YOLO(str(weights_path))
+                
+                # Read and process image
+                image = cv2.imread(tmp_path)
+                if image is None:
+                    return JSONResponse(
+                        content={"error": "Could not read uploaded image"},
+                        status_code=400
+                    )
+                
+                # Run inference
+                results = model.predict(source=image, conf=0.25, verbose=False)[0]
+                
+                # Emotion labels
+                emotion_labels = ['angry', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprised']
+                
+                # Extract predictions
+                predictions = []
+                if len(results.boxes) > 0:
+                    for box in results.boxes:
+                        class_id = int(box.cls[0])
+                        confidence = float(box.conf[0])
+                        bbox = box.xyxy[0].tolist()
+                        
+                        predictions.append({
+                            "expression": emotion_labels[class_id],
+                            "confidence": round(confidence, 3),
+                            "bbox": {
+                                "x1": round(bbox[0], 1),
+                                "y1": round(bbox[1], 1),
+                                "x2": round(bbox[2], 1),
+                                "y2": round(bbox[3], 1)
+                            }
+                        })
+                
+                if not predictions:
+                    return JSONResponse(content={
+                        "error": "No faces detected in the image",
+                        "predictions": [],
+                        "framework": framework,
+                        "model": model_size
+                    })
+                
+                # Return the highest confidence prediction as primary
+                predictions.sort(key=lambda x: x['confidence'], reverse=True)
+                
+                result = {
+                    "expression": predictions[0]["expression"],
+                    "confidence": predictions[0]["confidence"],
+                    "all_detections": predictions,
+                    "num_faces": len(predictions),
+                    "framework": framework,
+                    "model": model_size
+                }
+                return JSONResponse(content=result)
+            
+            else:
+                return JSONResponse(
+                    content={
+                        "error": f"Framework '{framework}' not yet implemented for API",
+                        "framework": framework
+                    },
+                    status_code=501
+                )
+        
+        except Exception as e:
+            return JSONResponse(
+                content={
+                    "error": f"Prediction failed: {str(e)}",
+                    "framework": framework
+                },
+                status_code=500
+            )
         finally:
             # Clean up temp file
             if os.path.exists(tmp_path):
