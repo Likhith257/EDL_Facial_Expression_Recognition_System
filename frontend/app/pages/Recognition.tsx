@@ -351,6 +351,13 @@ export default function Recognition() {
   const startCamera = async () => {
     try {
       setError(null);
+      
+      // Check if getUserMedia is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setError("Camera access is not supported in this browser or context. Please use a modern browser and ensure the page is served over HTTPS or localhost.");
+        return;
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           width: { ideal: 1280 },
@@ -360,6 +367,8 @@ export default function Recognition() {
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        // Ensure video starts playing
+        await videoRef.current.play();
         setIsCameraActive(true);
       }
     } catch (err: any) {
@@ -378,6 +387,7 @@ export default function Recognition() {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
+            await videoRef.current.play();
             setIsCameraActive(true);
             return;
           }
@@ -774,6 +784,7 @@ export default function Recognition() {
                           ref={videoRef}
                           autoPlay
                           playsInline
+                          muted
                           className="w-full rounded-lg"
                         />
                         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">

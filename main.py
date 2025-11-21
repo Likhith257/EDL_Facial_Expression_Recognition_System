@@ -167,6 +167,14 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
             if favicon_path.exists():
                 return FileResponse(str(favicon_path))
             return JSONResponse(content={"error": "Not found"}, status_code=404)
+        
+        # Catch-all route for client-side routing (SPA)
+        @app.get("/{full_path:path}")
+        async def serve_spa(full_path: str):
+            # Only serve index.html for non-API routes
+            if not full_path.startswith("api/"):
+                return FileResponse(str(frontend_dist / "index.html"))
+            return JSONResponse(content={"error": "Not found"}, status_code=404)
     else:
         print(f"Warning: Frontend build not found at {frontend_dist}")
         print("Build the frontend first: cd frontend && npm install && npm run build")
