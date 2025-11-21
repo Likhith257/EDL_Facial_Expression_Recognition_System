@@ -176,7 +176,11 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
         return {"status": "ok", "framework": framework, "model": model_size}
     
     @app.post("/api/predict")
-    async def predict_expression(file: UploadFile = File(...)):
+    async def predict_expression(
+        file: UploadFile = File(...),
+        detection_model: str = 'yolo',
+        recognition_model: str = 'yolo'
+    ):
         """Predict facial expression from uploaded image."""
         import tempfile
         import os
@@ -191,8 +195,11 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
             tmp_path = tmp.name
         
         try:
+            # Determine which model to use based on parameters
+            selected_framework = recognition_model if recognition_model != 'yolo' else detection_model
+            
             # Load the trained model
-            if framework == 'yolo':
+            if selected_framework == 'yolo':
                 weights_path = Path(f"models/yolo_model/runs/facial_expression_{model_size}/weights/best.pt")
                 if not weights_path.exists():
                     return JSONResponse(
@@ -255,16 +262,101 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
                     "confidence": predictions[0]["confidence"],
                     "all_detections": predictions,
                     "num_faces": len(predictions),
-                    "framework": framework,
+                    "framework": "yolo",
                     "model": model_size
+                }
+                return JSONResponse(content=result)
+            
+            elif selected_framework in ['efficientb3', 'efficientnet', 'efficientnetb3']:
+                # Use EfficientNet-B3 model
+                import torch
+                from torchvision import transforms
+                from PIL import Image
+                
+                checkpoint_path = Path("models/efficientnetb3_model/checkpoints/best_model.pth")
+                if not checkpoint_path.exists():
+                    return JSONResponse(
+                        content={
+                            "error": "EfficientNet-B3 model weights not found. Please train the model first.",
+                            "path": str(checkpoint_path)
+                        },
+                        status_code=404
+                    )
+                
+                # Import predictor
+                sys.path.insert(0, str(Path("models/efficientnetb3_model/src")))
+                from predict import EmotionPredictor
+                
+                # Initialize predictor
+                predictor = EmotionPredictor(
+                    checkpoint_path=checkpoint_path,
+                    config_path=Path("models/efficientnetb3_model/config.yaml"),
+                    device='mps'
+                )
+                
+                # Read image
+                image = cv2.imread(tmp_path)
+                if image is None:
+                    return JSONResponse(
+                        content={"error": "Could not read uploaded image"},
+                        status_code=400
+                    )
+                
+                # Convert to grayscale for face detection
+                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                
+                # Detect faces using Haar Cascade
+                faces = predictor.face_cascade.detectMultiScale(
+                    gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
+                )
+                
+                predictions = []
+                for (x, y, w, h) in faces:
+                    # Extract face
+                    face_img = image[y:y+h, x:x+w]
+                    face_pil = Image.fromarray(cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB))
+                    
+                    # Predict
+                    emotion, confidence = predictor.predict_image(face_pil)
+                    
+                    predictions.append({
+                        "expression": emotion,
+                        "confidence": round(confidence, 3),
+                        "bbox": {
+                            "x1": float(x),
+                            "y1": float(y),
+                            "x2": float(x + w),
+                            "y2": float(y + h)
+                        }
+                    })
+                
+                if not predictions:
+                    return JSONResponse(content={
+                        "error": "No faces detected in the image",
+                        "predictions": [],
+                        "framework": "efficientnetb3",
+                        "model": "efficientnet-b3"
+                    })
+                
+                # Return the highest confidence prediction as primary
+                predictions.sort(key=lambda x: x['confidence'], reverse=True)
+                
+                result = {
+                    "expression": predictions[0]["expression"],
+                    "confidence": predictions[0]["confidence"],
+                    "all_detections": predictions,
+                    "num_faces": len(predictions),
+                    "framework": "efficientnetb3",
+                    "model": "efficientnet-b3"
                 }
                 return JSONResponse(content=result)
             
             else:
                 return JSONResponse(
                     content={
-                        "error": f"Framework '{framework}' not yet implemented for API",
-                        "framework": framework
+                        "error": f"Framework '{selected_framework}' not yet implemented for API. Available: yolo, efficientb3",
+                        "framework": selected_framework,
+                        "note": "ArcFace, Swin, and ViT models are not yet implemented"
                     },
                     status_code=501
                 )
@@ -273,7 +365,7 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
             return JSONResponse(
                 content={
                     "error": f"Prediction failed: {str(e)}",
-                    "framework": framework
+                    "framework": selected_framework if 'selected_framework' in locals() else framework
                 },
                 status_code=500
             )

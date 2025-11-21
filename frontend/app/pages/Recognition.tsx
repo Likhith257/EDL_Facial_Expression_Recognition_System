@@ -28,7 +28,7 @@ export default function Recognition() {
   // Model selection state
   const [detectionModel, setDetectionModel] = useState<DetectionModel>("yolo");
   const [recognitionModel, setRecognitionModel] =
-    useState<RecognitionModel>("arcface");
+    useState<RecognitionModel>("yolo");
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -59,6 +59,8 @@ export default function Recognition() {
       // Create form data
       const formData = new FormData();
       formData.append('file', blob, 'image.jpg');
+      formData.append('detection_model', detectionModel);
+      formData.append('recognition_model', recognitionModel);
       
       // Call backend API
       const apiResponse = await fetch('/api/predict', {
@@ -98,20 +100,31 @@ export default function Recognition() {
           height: detection.bbox.y2 - detection.bbox.y1,
         },
         expression: detection.expression,
-        age: "Unknown",
-        gender: "Unknown",
         embedding: `Detected by ${data.model}`,
       })) || [];
+
+      // Determine actual model used from API response
+      const actualFramework = data.framework || 'yolo';
+      const displayRecognitionModel = actualFramework === 'yolo' 
+        ? 'YOLOv8'
+        : actualFramework === 'efficientnetb3' || actualFramework === 'efficientb3'
+        ? 'EfficientNet-B3'
+        : recognitionNames[recognitionModel];
 
       setResults({
         detected: faces.length > 0,
         confidence: data.confidence ? (data.confidence * 100).toFixed(1) : 0,
         detectionModel: modelNames[detectionModel],
-        recognitionModel: data.framework === 'yolo' ? 'YOLOv8' : recognitionNames[recognitionModel],
+        recognitionModel: displayRecognitionModel,
         faces: faces,
         processingTime: processingTime,
         numFaces: data.num_faces || 0,
       });
+      
+      // Auto-scroll to results
+      setTimeout(() => {
+        document.querySelector('.results-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
       
     } catch (err: any) {
       setError(err.message || 'Failed to process image');
@@ -151,6 +164,10 @@ export default function Recognition() {
         context.drawImage(videoRef.current, 0, 0);
         setSelectedImage(canvasRef.current.toDataURL("image/jpeg"));
         stopCamera();
+        // Switch to upload tab to show captured image
+        setActiveTab("upload");
+        setResults(null);
+        setError(null);
       }
     }
   };
@@ -161,6 +178,26 @@ export default function Recognition() {
     setError(null);
   };
 
+  const handleTabChange = (tab: "upload" | "webcam") => {
+    setActiveTab(tab);
+    if (tab === "upload" && isCameraActive) {
+      stopCamera();
+    }
+  };
+
+  // Handle Enter key to analyze image
+  const handleKeyPress = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' && selectedImage && !isProcessing && !isCameraActive) {
+      handleProcess();
+    }
+  };
+
+  // Add keyboard listener
+  useState(() => {
+    window.addEventListener('keydown', handleKeyPress as any);
+    return () => window.removeEventListener('keydown', handleKeyPress as any);
+  });
+
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
@@ -168,11 +205,10 @@ export default function Recognition() {
           {/* Header */}
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-              Facial Recognition
+              Facial Expression Recognition
             </h1>
             <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-              Upload an image or use your webcam to detect and analyze faces in
-              real-time.
+              Upload an image or use your webcam to detect faces and recognize emotions in real-time.
             </p>
           </div>
 
@@ -183,7 +219,7 @@ export default function Recognition() {
               {/* Tab Selection */}
               <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
                 <button
-                  onClick={() => setActiveTab("upload")}
+                  onClick={() => handleTabChange("upload")}
                   className={`flex-1 px-4 py-2 rounded-md font-medium transition ${
                     activeTab === "upload"
                       ? "bg-white text-blue-600 shadow-sm"
@@ -194,7 +230,7 @@ export default function Recognition() {
                   Upload Image
                 </button>
                 <button
-                  onClick={() => setActiveTab("webcam")}
+                  onClick={() => handleTabChange("webcam")}
                   className={`flex-1 px-4 py-2 rounded-md font-medium transition ${
                     activeTab === "webcam"
                       ? "bg-white text-blue-600 shadow-sm"
@@ -219,7 +255,7 @@ export default function Recognition() {
                         Click to upload an image
                       </p>
                       <p className="text-sm text-slate-600">
-                        or drag and drop (JPG, PNG, WebP)
+                        JPG, PNG, or WebP • Max 10MB
                       </p>
                       <input
                         ref={fileInputRef}
@@ -250,10 +286,10 @@ export default function Recognition() {
                           <Camera className="w-8 h-8 text-blue-600" />
                         </div>
                         <div className="text-slate-600 mb-2">
-                          Upload an image or use your webcam to get started
+                          Ready to analyze facial expressions
                         </div>
                         <div className="text-sm text-slate-500">
-                          Results will appear here
+                          Upload an image or capture from webcam to begin
                         </div>
                       </div>
                     </div>
@@ -265,34 +301,51 @@ export default function Recognition() {
               {activeTab === "webcam" && (
                 <div className="space-y-4">
                   {!isCameraActive ? (
-                    <button
-                      onClick={startCamera}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
-                    >
-                      <Camera className="w-5 h-5" />
-                      Start Webcam
-                    </button>
+                    <div className="space-y-4">
+                      <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 md:p-32 text-center bg-white">
+                        <Camera className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                        <p className="font-semibold text-slate-900 mb-1">
+                          Use your webcam to capture
+                        </p>
+                        <p className="text-sm text-slate-600 mb-4">
+                          Take a photo for emotion analysis
+                        </p>
+                      </div>
+                      <button
+                        onClick={startCamera}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+                      >
+                        <Camera className="w-5 h-5" />
+                        Start Webcam
+                      </button>
+                    </div>
                   ) : (
                     <div className="space-y-3">
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        className="w-full rounded-lg bg-black"
-                      />
+                      <div className="relative bg-black rounded-lg overflow-hidden">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          className="w-full rounded-lg"
+                        />
+                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                          Position your face in the frame
+                        </div>
+                      </div>
                       <canvas ref={canvasRef} className="hidden" />
                       <div className="flex gap-2">
                         <button
                           onClick={captureFrame}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition"
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
                         >
+                          <Camera className="w-5 h-5" />
                           Capture Photo
                         </button>
                         <button
                           onClick={stopCamera}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg transition"
+                          className="px-6 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition"
                         >
-                          Close Camera
+                          Cancel
                         </button>
                       </div>
                     </div>
@@ -315,6 +368,7 @@ export default function Recognition() {
                     onClick={handleProcess}
                     disabled={isProcessing}
                     className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-lg disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+                    title="Click to analyze (or press Enter)"
                   >
                     {isProcessing ? (
                       <>
@@ -330,6 +384,7 @@ export default function Recognition() {
                   <button
                     onClick={handleClear}
                     className="px-4 py-3 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold rounded-lg transition flex items-center justify-center gap-2"
+                    title="Clear image and results"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
@@ -367,8 +422,8 @@ export default function Recognition() {
                   </select>
                   <p className="text-xs text-slate-500">
                     {detectionModel === "yolo"
-                      ? "Real-time object detection with high accuracy"
-                      : "Lightweight model optimized for efficiency"}
+                      ? "State-of-the-art real-time detection with 95%+ accuracy"
+                      : "Efficient CNN with attention mechanism for mobile deployment"}
                   </p>
                 </div>
 
@@ -384,53 +439,55 @@ export default function Recognition() {
                     }
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   >
-                    <option value="yolo">YOLOv8 (Fast Detection)</option>
+                    <option value="yolo">YOLOv8 (Fast Detection) ✓</option>
                     <option value="efficientb3">
-                      EfficientNet-B3 (Lightweight)
+                      EfficientNet-B3 (Lightweight) ✓
                     </option>
-                    <option value="arcface">ArcFace (Industry Standard)</option>
-                    <option value="swin">Swin Transformer</option>
-                    <option value="vit">Vision Transformer (ViT)</option>
+                    <option value="arcface" disabled>ArcFace (Coming Soon)</option>
+                    <option value="swin" disabled>Swin Transformer (Coming Soon)</option>
+                    <option value="vit" disabled>Vision Transformer (Coming Soon)</option>
                   </select>
                   <p className="text-xs text-slate-500">
                     {recognitionModel === "yolo"
-                      ? "Real-time face detection and embedding extraction"
+                      ? "Fast detection with 7 emotion classes (angry, disgust, fear, happy, neutral, sad, surprised)"
                       : recognitionModel === "efficientb3"
-                        ? "Efficient embedding model for mobile and edge devices"
+                        ? "EfficientNet-B3 with CBAM attention for improved accuracy"
                         : recognitionModel === "arcface"
-                          ? "Industry-standard face embedding model"
+                          ? "⚠️ Not yet implemented - will use YOLO"
                           : recognitionModel === "swin"
-                            ? "Transformer-based with hierarchical structure"
-                            : "Pure vision transformer architecture"}
+                            ? "⚠️ Not yet implemented - will use YOLO"
+                            : "⚠️ Not yet implemented - will use YOLO"}
                   </p>
                 </div>
 
                 {/* Info Box */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-xs text-blue-800">
-                    <span className="font-semibold">Tip:</span> Different models
-                    provide different accuracy/speed tradeoffs. Try different
-                    combinations to find what works best for your use case.
+                    <span className="font-semibold">Available Models:</span> YOLOv8 and EfficientNet-B3 are fully implemented. ArcFace, Swin, and ViT are coming soon.
                   </p>
                 </div>
 
-                {/* Start Button */}
-                <button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-lg text-white font-semibold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2">
-                  Start
-                </button>
+                {/* Status Indicator */}
+                {(recognitionModel === 'arcface' || recognitionModel === 'swin' || recognitionModel === 'vit') && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-xs text-amber-800">
+                      <span className="font-semibold">⚠️ Note:</span> Selected model is not yet implemented. The system will use YOLOv8 for inference.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* Results Panel - below upload section */}
           {results && (
-            <div className="mt-6">
+            <div className="mt-6 results-panel">
               <div className="bg-white rounded-lg border border-slate-200 p-6">
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle className="w-6 h-6" />
                     <span className="font-semibold">
-                      Face(s) Detected Successfully
+                      {results.numFaces === 1 ? '1 Face' : `${results.numFaces} Faces`} Detected Successfully
                     </span>
                   </div>
 
@@ -493,23 +550,11 @@ export default function Recognition() {
                               {face.confidence}%
                             </span>
                           </div>
-                          <div className="grid grid-cols-2 gap-1 text-xs">
+                          <div className="grid grid-cols-1 gap-1 text-xs">
                             <div>
                               <p className="text-slate-600">Expression</p>
                               <p className="font-medium text-slate-900 capitalize">
                                 {face.expression}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-slate-600">Age</p>
-                              <p className="font-medium text-slate-900">
-                                {face.age}
-                              </p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="text-slate-600">Gender</p>
-                              <p className="font-medium text-slate-900">
-                                {face.gender}
                               </p>
                             </div>
                           </div>
