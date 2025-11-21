@@ -1,10 +1,12 @@
 # macOS
 .DS_Store
+*.DS_Store
 
 # Python bytecode and cache
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
 # Build artifacts
 build/
@@ -28,6 +30,28 @@ ENV/
 # IDE/editor files
 .vscode/*
 !.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Model files
+*.pth
+*.pt
+!models/yolo_model/pretrained/*.pt
+
+# Training outputs
+runs/
+*.log
+
+# Dataset (large files)
+DATASET - To Students/
+
+# Environment
+.env
+.env.local
 !.vscode/launch.json
 .idea/
 *.swp

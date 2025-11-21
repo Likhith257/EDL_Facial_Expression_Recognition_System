@@ -25,7 +25,6 @@ export default function Recognition() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
 
-  // Model selection state
   const [detectionModel, setDetectionModel] = useState<DetectionModel>("yolo");
   const [recognitionModel, setRecognitionModel] =
     useState<RecognitionModel>("yolo");
@@ -52,17 +51,14 @@ export default function Recognition() {
     try {
       const startTime = Date.now();
       
-      // Convert base64 to blob
       const response = await fetch(selectedImage);
       const blob = await response.blob();
       
-      // Create form data
       const formData = new FormData();
       formData.append('file', blob, 'image.jpg');
       formData.append('detection_model', detectionModel);
       formData.append('recognition_model', recognitionModel);
       
-      // Call backend API
       const apiResponse = await fetch('/api/predict', {
         method: 'POST',
         body: formData,
@@ -89,7 +85,6 @@ export default function Recognition() {
         vit: "Vision Transformer (ViT)",
       };
       
-      // Map API response to frontend format
       const faces = data.all_detections?.map((detection: any, index: number) => ({
         id: index + 1,
         confidence: (detection.confidence * 100).toFixed(1),
@@ -103,7 +98,6 @@ export default function Recognition() {
         embedding: `Detected by ${data.model}`,
       })) || [];
 
-      // Determine actual model used from API response
       const actualFramework = data.framework || 'yolo';
       const displayRecognitionModel = actualFramework === 'yolo' 
         ? 'YOLOv8'
@@ -121,7 +115,6 @@ export default function Recognition() {
         numFaces: data.num_faces || 0,
       });
       
-      // Auto-scroll to results
       setTimeout(() => {
         document.querySelector('.results-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
@@ -164,7 +157,6 @@ export default function Recognition() {
         context.drawImage(videoRef.current, 0, 0);
         setSelectedImage(canvasRef.current.toDataURL("image/jpeg"));
         stopCamera();
-        // Switch to upload tab to show captured image
         setActiveTab("upload");
         setResults(null);
         setError(null);
@@ -185,14 +177,12 @@ export default function Recognition() {
     }
   };
 
-  // Handle Enter key to analyze image
   const handleKeyPress = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && selectedImage && !isProcessing && !isCameraActive) {
       handleProcess();
     }
   };
 
-  // Add keyboard listener
   useState(() => {
     window.addEventListener('keydown', handleKeyPress as any);
     return () => window.removeEventListener('keydown', handleKeyPress as any);
@@ -202,7 +192,6 @@ export default function Recognition() {
     <Layout>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
               Facial Expression Recognition
@@ -212,11 +201,8 @@ export default function Recognition() {
             </p>
           </div>
 
-          {/* Main Content */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 -mb-px">
-            {/* Input Section - spans 2 columns */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Tab Selection */}
               <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
                 <button
                   onClick={() => handleTabChange("upload")}
@@ -242,7 +228,6 @@ export default function Recognition() {
                 </button>
               </div>
 
-              {/* Upload Tab */}
               {activeTab === "upload" && (
                 <div className="space-y-4">
                   {!selectedImage ? (
@@ -297,7 +282,6 @@ export default function Recognition() {
                 </div>
               )}
 
-              {/* Webcam Tab */}
               {activeTab === "webcam" && (
                 <div className="space-y-4">
                   {!isCameraActive ? (
@@ -353,7 +337,6 @@ export default function Recognition() {
                 </div>
               )}
 
-              {/* Error Message */}
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -361,7 +344,6 @@ export default function Recognition() {
                 </div>
               )}
 
-              {/* Action Buttons */}
               {selectedImage && !isCameraActive && (
                 <div className="flex gap-3">
                   <button
@@ -392,9 +374,7 @@ export default function Recognition() {
               )}
             </div>
 
-            {/* Model Selection Panel - right column */}
             <div className="mb-2 pl-px">
-              {/* Model Selection Panel */}
               <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
                 <div className="flex items-center gap-2 mb-4">
                   <Settings className="w-5 h-5 text-blue-600" />
@@ -403,7 +383,6 @@ export default function Recognition() {
                   </h3>
                 </div>
 
-                {/* Detection Model Selection */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-slate-700">
                     Detection Model
@@ -427,7 +406,6 @@ export default function Recognition() {
                   </p>
                 </div>
 
-                {/* Recognition Model Selection */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-slate-700">
                     Recognition Model
@@ -460,14 +438,12 @@ export default function Recognition() {
                   </p>
                 </div>
 
-                {/* Info Box */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-xs text-blue-800">
                     <span className="font-semibold">Available Models:</span> YOLOv8 and EfficientNet-B3 are fully implemented. ArcFace, Swin, and ViT are coming soon.
                   </p>
                 </div>
 
-                {/* Status Indicator */}
                 {(recognitionModel === 'arcface' || recognitionModel === 'swin' || recognitionModel === 'vit') && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                     <p className="text-xs text-amber-800">
@@ -479,7 +455,6 @@ export default function Recognition() {
             </div>
           </div>
 
-          {/* Results Panel - below upload section */}
           {results && (
             <div className="mt-6 results-panel">
               <div className="bg-white rounded-lg border border-slate-200 p-6">
@@ -491,7 +466,6 @@ export default function Recognition() {
                     </span>
                   </div>
 
-                  {/* Model Info */}
                   <div className="bg-slate-50 rounded-lg p-4 space-y-2 border border-slate-200">
                     <div>
                       <p className="text-xs text-slate-600 mb-1">
@@ -511,7 +485,6 @@ export default function Recognition() {
                     </div>
                   </div>
 
-                  {/* Overall Stats */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-blue-50 rounded-lg p-3">
                       <p className="text-xs text-slate-600 mb-1">
@@ -531,7 +504,6 @@ export default function Recognition() {
                     </div>
                   </div>
 
-                  {/* Detected Faces */}
                   <div>
                     <h3 className="font-semibold text-slate-900 mb-3 text-sm">
                       Detected Faces ({results.faces.length})
@@ -563,7 +535,6 @@ export default function Recognition() {
                     </div>
                   </div>
 
-                  {/* Export Button */}
                   <button className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm">
                     <Download className="w-4 h-4" />
                     Download Report
