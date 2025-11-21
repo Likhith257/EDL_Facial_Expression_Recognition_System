@@ -221,8 +221,13 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
                         status_code=400
                     )
                 
-                # Run inference
-                results = model.predict(source=image, conf=0.25, verbose=False)[0]
+                # Run inference with lower confidence for better detection
+                results = model.predict(
+                    source=image, 
+                    conf=0.15,  # Lower confidence threshold for real-world images
+                    iou=0.45,   # NMS IoU threshold
+                    verbose=False
+                )[0]
                 
                 # Emotion labels
                 emotion_labels = ['angry', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprised']
@@ -305,19 +310,48 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
                 # Convert to grayscale for face detection
                 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                 
-                # Detect faces using Haar Cascade
+                # Apply histogram equalization for better face detection
+                gray = cv2.equalizeHist(gray)
+                
+                # Detect faces using Haar Cascade with adjusted parameters for real-world images
                 faces = predictor.face_cascade.detectMultiScale(
-                    gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
+                    gray, 
+                    scaleFactor=1.05,  # More sensitive scaling
+                    minNeighbors=3,    # Lower threshold for detection
+                    minSize=(48, 48),  # Slightly larger minimum size
+                    flags=cv2.CASCADE_SCALE_IMAGE
                 )
+                
+                # If no faces found, try alternative cascade
+                if len(faces) == 0:
+                    faces = predictor.face_cascade_alt.detectMultiScale(
+                        gray,
+                        scaleFactor=1.05,
+                        minNeighbors=3,
+                        minSize=(48, 48),
+                        flags=cv2.CASCADE_SCALE_IMAGE
+                    )
                 
                 predictions = []
                 for (x, y, w, h) in faces:
-                    # Extract face
-                    face_img = image[y:y+h, x:x+w]
+                    # Add padding around face for better context (10% on each side)
+                    padding = int(max(w, h) * 0.1)
+                    x1 = max(0, x - padding)
+                    y1 = max(0, y - padding)
+                    x2 = min(image.shape[1], x + w + padding)
+                    y2 = min(image.shape[0], y + h + padding)
+                    
+                    # Extract face with padding
+                    face_img = image[y1:y2, x1:x2]
+                    
+                    # Skip if face is too small
+                    if face_img.shape[0] < 48 or face_img.shape[1] < 48:
+                        continue
+                    
                     face_pil = Image.fromarray(cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB))
                     
-                    # Predict
-                    emotion, confidence = predictor.predict_image(face_pil)
+                    # Predict with enhancement enabled for real-world images
+                    emotion, confidence = predictor.predict_image(face_pil, apply_enhancement=True)
                     
                     predictions.append({
                         "expression": emotion,

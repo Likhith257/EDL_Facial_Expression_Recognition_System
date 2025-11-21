@@ -1,7 +1,15 @@
 {
-  "name": "fusion-starter",
+  "name": "facial-expression-recognition-frontend",
+  "version": "1.0.0",
+  "description": "Modern React + TypeScript frontend for facial expression recognition",
   "private": true,
   "type": "module",
+  "author": "Likhith, Thanish Chinnappa KC, Saumitra Purkayastha, Sundareshwar S, Tenzin Kunga",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Likhith257/EDL_Facial_Expression_Recognition_System.git"
+  },
   "pkg": {
     "assets": [
       "dist/spa/*"

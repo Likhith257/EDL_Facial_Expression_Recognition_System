@@ -1,61 +1,20 @@
 # macOS
 .DS_Store
-*.DS_Store
 
-# Python bytecode and cache
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
 *.pyc
-
-# Build artifacts
-build/
-dist/
-!frontend/dist/
-downloads/
-eggs/
-.eggs/
-wheels/
-sdist/
-*.egg-info/
-*.egg
-.installed.cfg
 
 # Virtual environments
 .venv/
 venv/
 env/
-ENV/
 
-# IDE/editor files
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Model files
-*.pth
-*.pt
-!models/yolo_model/pretrained/*.pt
-
-# Training outputs
-runs/
-*.log
-
-# Dataset (large files)
-DATASET - To Students/
-
-# Environment
-.env
-.env.local
-!.vscode/launch.json
+# IDE
+.vscode/
 .idea/
 *.swp
-*.swo
 
 # Jupyter
 .ipynb_checkpoints/
@@ -64,33 +23,32 @@ DATASET - To Students/
 *.log
 logs/
 
-# Large datasets and raw data
+# Dataset (large files)
 DATASET - To Students/
 dataset/
 !dataset/data.yaml
 
-# Model artifacts and outputs
+# Training outputs
 runs/
 results/
 outputs/
-checkpoints/
 
-# Model weights/binaries
+# Model files
 *.pt
 *.pth
 *.onnx
-*.tflite
-*.engine
-
-# Ignore artifacts within models/* subprojects
 models/**/runs/
 models/**/results/
 models/**/outputs/
-models/**/__pycache__/
 models/**/checkpoints/
-models/**/weights/
+models/**/__pycache__/
 
-# Caches
-.pytest_cache/
-.cache/
-__pypackages__/
+# Environment
+.env
+.env.local
+
+# Build artifacts
+build/
+dist/
+!frontend/dist/
+*.egg-info/

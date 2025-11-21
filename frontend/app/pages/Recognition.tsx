@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Layout from "@/components/Layout";
 import {
   Upload,
@@ -9,37 +9,246 @@ import {
   Download,
   Trash2,
   Settings,
+  History,
+  Image as ImageIcon,
+  Sliders,
+  FileImage,
 } from "lucide-react";
 
 type DetectionModel = "yolo" | "efficientb3";
 type RecognitionModel = "yolo" | "efficientb3" | "arcface" | "swin" | "vit";
 
+interface HistoryItem {
+  id: string;
+  timestamp: number;
+  image: string;
+  results: any;
+  detectionModel: string;
+  recognitionModel: string;
+}
+
 export default function Recognition() {
   const [activeTab, setActiveTab] = useState<"upload" | "webcam">("upload");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [batchResults, setBatchResults] = useState<any[]>([]);
+  const [isBatchMode, setIsBatchMode] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const batchFileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const annotatedCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [imageSize, setImageSize] = useState<{width: number, height: number} | null>(null);
+  const [confidenceThreshold, setConfidenceThreshold] = useState(25);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   const [detectionModel, setDetectionModel] = useState<DetectionModel>("yolo");
   const [recognitionModel, setRecognitionModel] =
     useState<RecognitionModel>("yolo");
 
+  // Load history from localStorage on mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('emotionDetectionHistory');
+    if (savedHistory) {
+      setHistory(JSON.parse(savedHistory));
+    }
+  }, []);
+
+  // Save to history when results are generated
+  const saveToHistory = (image: string, results: any, detectionModel: string, recognitionModel: string) => {
+    const newItem: HistoryItem = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      image,
+      results,
+      detectionModel,
+      recognitionModel,
+    };
+    const updatedHistory = [newItem, ...history].slice(0, 5); // Keep only last 5
+    setHistory(updatedHistory);
+    localStorage.setItem('emotionDetectionHistory', JSON.stringify(updatedHistory));
+  };
+
+  // Draw bounding boxes and labels on annotated canvas
+  const drawAnnotations = (imageSrc: string, faces: any[]) => {
+    if (!annotatedCanvasRef.current) return;
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = annotatedCanvasRef.current!;
+      const ctx = canvas.getContext('2d')!;
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      // Draw original image
+      ctx.drawImage(img, 0, 0);
+
+      // Emotion colors
+      const emotionColors: Record<string, string> = {
+        happy: '#10b981',
+        sad: '#3b82f6',
+        angry: '#ef4444',
+        fear: '#8b5cf6',
+        disgust: '#f59e0b',
+        surprised: '#eab308',
+        neutral: '#6b7280',
+      };
+
+      // Draw each face box
+      faces.forEach((face: any) => {
+        const conf = parseFloat(face.confidence);
+        if (conf < confidenceThreshold) return; // Skip if below threshold
+
+        const { x, y, width, height } = face.position;
+        const color = emotionColors[face.expression.toLowerCase()] || '#6b7280';
+
+        // Draw bounding box
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, width, height);
+
+        // Draw label background
+        const label = `${face.expression} ${face.confidence}%`;
+        ctx.font = 'bold 16px Arial';
+        const textWidth = ctx.measureText(label).width;
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y - 25, textWidth + 10, 25);
+
+        // Draw label text
+        ctx.fillStyle = 'white';
+        ctx.fillText(label, x + 5, y - 7);
+      });
+    };
+    img.src = imageSrc;
+  };
+
+  const downloadAnnotatedImage = () => {
+    if (!annotatedCanvasRef.current) return;
+    const link = document.createElement('a');
+    link.download = `annotated-emotion-${Date.now()}.jpg`;
+    link.href = annotatedCanvasRef.current.toDataURL('image/jpeg');
+    link.click();
+  };
+
+  const loadFromHistory = (item: HistoryItem) => {
+    setSelectedImage(item.image);
+    setResults({
+      ...item.results,
+      detectionModel: item.detectionModel,
+      recognitionModel: item.recognitionModel,
+    });
+    setShowHistory(false);
+    drawAnnotations(item.image, item.results.faces);
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('emotionDetectionHistory');
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Image size must be less than 10MB');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        setError('Please upload a valid image file');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (event) => {
-        setSelectedImage(event.target?.result as string);
-        setError(null);
-        setResults(null);
+        const img = new Image();
+        img.onload = () => {
+          setImageSize({ width: img.width, height: img.height });
+          setSelectedImage(event.target?.result as string);
+          setError(null);
+          setResults(null);
+        };
+        img.src = event.target?.result as string;
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleBatchFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const validFiles = files.filter(file => {
+      if (file.size > 10 * 1024 * 1024) {
+        setError(`${file.name} is too large (max 10MB)`);
+        return false;
+      }
+      if (!file.type.startsWith('image/')) {
+        setError(`${file.name} is not a valid image`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length > 10) {
+      setError('Maximum 10 images allowed in batch mode');
+      validFiles.splice(10);
+    }
+
+    const imagePromises = validFiles.map(file => {
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve(event.target?.result as string);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(imagePromises).then(images => {
+      setSelectedImages(images);
+      setBatchResults([]);
+      setError(null);
+    });
+  };
+
+  const processBatchImages = async () => {
+    if (selectedImages.length === 0) return;
+
+    setIsProcessing(true);
+    setError(null);
+    const results: any[] = [];
+
+    for (let i = 0; i < selectedImages.length; i++) {
+      try {
+        const response = await fetch(selectedImages[i]);
+        const blob = await response.blob();
+        
+        const formData = new FormData();
+        formData.append('file', blob, `image-${i}.jpg`);
+        formData.append('detection_model', detectionModel);
+        formData.append('recognition_model', recognitionModel);
+        
+        const apiResponse = await fetch('/api/predict', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (apiResponse.ok) {
+          const data = await apiResponse.json();
+          results.push({ success: true, data, image: selectedImages[i] });
+        } else {
+          results.push({ success: false, error: 'Failed to process', image: selectedImages[i] });
+        }
+      } catch (err) {
+        results.push({ success: false, error: 'Network error', image: selectedImages[i] });
+      }
+    }
+
+    setBatchResults(results);
+    setIsProcessing(false);
   };
 
   const handleProcess = async () => {
@@ -114,6 +323,18 @@ export default function Recognition() {
         processingTime: processingTime,
         numFaces: data.num_faces || 0,
       });
+
+      // Save to history
+      saveToHistory(selectedImage, {
+        confidence: data.confidence,
+        detectionModel: modelNames[detectionModel],
+        recognitionModel: displayRecognitionModel,
+        faces: faces,
+        numFaces: data.num_faces || 0,
+      }, modelNames[detectionModel], displayRecognitionModel);
+
+      // Draw annotations on canvas
+      drawAnnotations(selectedImage, faces);
       
       setTimeout(() => {
         document.querySelector('.results-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -129,14 +350,46 @@ export default function Recognition() {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      setError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user'
+        } 
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setIsCameraActive(true);
-        setError(null);
       }
-    } catch (err) {
-      setError("Unable to access camera. Please check permissions.");
+    } catch (err: any) {
+      let errorMessage = "Unable to access camera. ";
+      
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errorMessage += "Camera access was denied. Please allow camera permissions in your browser settings and try again.";
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        errorMessage += "No camera found. Please connect a camera and try again.";
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        errorMessage += "Camera is already in use by another application. Please close other apps using the camera.";
+      } else if (err.name === 'OverconstrainedError') {
+        errorMessage += "Camera doesn't support the requested settings. Trying with default settings...";
+        // Retry with basic constraints
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            setIsCameraActive(true);
+            return;
+          }
+        } catch {
+          errorMessage = "Unable to access camera with any settings.";
+        }
+      } else {
+        errorMessage += `Error: ${err.message || 'Unknown error'}`;
+      }
+      
+      setError(errorMessage);
+      console.error('Camera error:', err);
     }
   };
 
@@ -168,6 +421,43 @@ export default function Recognition() {
     setSelectedImage(null);
     setResults(null);
     setError(null);
+    setImageSize(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Image size must be less than 10MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          setImageSize({ width: img.width, height: img.height });
+          setSelectedImage(event.target?.result as string);
+          setError(null);
+          setResults(null);
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setError('Please drop a valid image file');
+    }
   };
 
   const handleTabChange = (tab: "upload" | "webcam") => {
@@ -177,16 +467,45 @@ export default function Recognition() {
     }
   };
 
+  const handleDownloadReport = () => {
+    if (!results) return;
+    
+    const report = {
+      timestamp: new Date().toISOString(),
+      detectionModel: results.detectionModel,
+      recognitionModel: results.recognitionModel,
+      processingTime: results.processingTime,
+      overallConfidence: results.confidence,
+      numberOfFaces: results.numFaces,
+      faces: results.faces.map((face: any) => ({
+        id: face.id,
+        expression: face.expression,
+        confidence: face.confidence,
+        position: face.position
+      }))
+    };
+    
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `emotion-detection-report-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleKeyPress = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && selectedImage && !isProcessing && !isCameraActive) {
       handleProcess();
     }
   };
 
-  useState(() => {
+  useEffect(() => {
     window.addEventListener('keydown', handleKeyPress as any);
     return () => window.removeEventListener('keydown', handleKeyPress as any);
-  });
+  }, [selectedImage, isProcessing, isCameraActive]);
 
   return (
     <Layout>
@@ -199,45 +518,183 @@ export default function Recognition() {
             <p className="text-xl text-slate-600 max-w-2xl mx-auto">
               Upload an image or use your webcam to detect faces and recognize emotions in real-time.
             </p>
+            <div className="mt-4 flex justify-center gap-3">
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg transition flex items-center gap-2"
+              >
+                <History className="w-4 h-4" />
+                History ({history.length})
+              </button>
+              <button
+                onClick={() => setIsBatchMode(!isBatchMode)}
+                className={`px-4 py-2 border rounded-lg transition flex items-center gap-2 ${
+                  isBatchMode
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700'
+                }`}
+              >
+                <FileImage className="w-4 h-4" />
+                Batch Mode {isBatchMode && '✓'}
+              </button>
+            </div>
           </div>
+
+          {/* History Panel */}
+          {showHistory && history.length > 0 && (
+            <div className="mb-8 bg-white rounded-lg border border-slate-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+                  <History className="w-5 h-5" />
+                  Recent Analysis
+                </h3>
+                <button
+                  onClick={clearHistory}
+                  className="text-xs text-red-600 hover:text-red-700"
+                >
+                  Clear All
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {history.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => loadFromHistory(item)}
+                    className="relative group overflow-hidden rounded-lg border-2 border-transparent hover:border-blue-500 transition"
+                  >
+                    <img src={item.image} alt="History" className="w-full h-24 object-cover" />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                      <span className="text-white text-xs font-medium">
+                        {item.results.numFaces} face(s)
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 -mb-px">
             <div className="lg:col-span-2 space-y-6">
-              <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
-                <button
-                  onClick={() => handleTabChange("upload")}
-                  className={`flex-1 px-4 py-2 rounded-md font-medium transition ${
-                    activeTab === "upload"
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <Upload className="w-4 h-4 inline mr-2" />
-                  Upload Image
-                </button>
-                <button
-                  onClick={() => handleTabChange("webcam")}
-                  className={`flex-1 px-4 py-2 rounded-md font-medium transition ${
-                    activeTab === "webcam"
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <Camera className="w-4 h-4 inline mr-2" />
-                  Webcam
-                </button>
-              </div>
+              {!isBatchMode && (
+                <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
+                  <button
+                    onClick={() => handleTabChange("upload")}
+                    className={`flex-1 px-4 py-2 rounded-md font-medium transition ${
+                      activeTab === "upload"
+                        ? "bg-white text-blue-600 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Upload className="w-4 h-4 inline mr-2" />
+                    Upload Image
+                  </button>
+                  <button
+                    onClick={() => handleTabChange("webcam")}
+                    className={`flex-1 px-4 py-2 rounded-md font-medium transition ${
+                      activeTab === "webcam"
+                        ? "bg-white text-blue-600 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Camera className="w-4 h-4 inline mr-2" />
+                    Webcam
+                  </button>
+                </div>
+              )}
 
-              {activeTab === "upload" && (
+              {/* Batch Upload Mode */}
+              {isBatchMode && (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileImage className="w-5 h-5 text-blue-600" />
+                      <h3 className="font-semibold text-blue-900">Batch Processing Mode</h3>
+                    </div>
+                    <p className="text-sm text-blue-700">
+                      Upload multiple images (up to 10) to process them all at once.
+                    </p>
+                  </div>
+
+                  {selectedImages.length === 0 ? (
+                    <div
+                      onClick={() => batchFileInputRef.current?.click()}
+                      className="rounded-lg text-center transition border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 p-8 md:p-32 cursor-pointer"
+                    >
+                      <ImageIcon className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                      <p className="font-semibold text-slate-900 mb-1">
+                        Click to upload multiple images
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        Up to 10 images • JPG, PNG, or WebP • Max 10MB each
+                      </p>
+                      <input
+                        ref={batchFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleBatchFileSelect}
+                        className="hidden"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        {selectedImages.map((img, idx) => (
+                          <div key={idx} className="relative">
+                            <img src={img} alt={`Batch ${idx + 1}`} className="w-full h-24 object-cover rounded-lg border-2 border-slate-200" />
+                            <div className="absolute top-1 right-1 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                              {idx + 1}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={processBatchImages}
+                          disabled={isProcessing}
+                          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-lg disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+                        >
+                          {isProcessing ? (
+                            <>
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                              Processing {batchResults.length + 1} of {selectedImages.length}...
+                            </>
+                          ) : (
+                            <>
+                              Analyze All ({selectedImages.length} images)
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => { setSelectedImages([]); setBatchResults([]); }}
+                          className="px-4 py-3 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold rounded-lg transition"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {!isBatchMode && activeTab === "upload" && (
                 <div className="space-y-4">
                   {!selectedImage ? (
                     <div
                       onClick={() => fileInputRef.current?.click()}
-                      className="rounded-lg text-center transition border-2 border-dashed border-slate-300 p-8 md:p-32 cursor-pointer hover:border-blue-400 hover:bg-blue-50"
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className={`rounded-lg text-center transition border-2 border-dashed p-8 md:p-32 cursor-pointer ${
+                        isDragging
+                          ? "border-blue-500 bg-blue-100"
+                          : "border-slate-300 hover:border-blue-400 hover:bg-blue-50"
+                      }`}
                     >
                       <Upload className="w-12 h-12 text-slate-400 mx-auto mb-3" />
                       <p className="font-semibold text-slate-900 mb-1">
-                        Click to upload an image
+                        {isDragging ? "Drop image here" : "Click to upload an image"}
                       </p>
                       <p className="text-sm text-slate-600">
                         JPG, PNG, or WebP • Max 10MB
@@ -251,15 +708,22 @@ export default function Recognition() {
                       />
                     </div>
                   ) : (
-                    <div className="relative bg-white rounded-lg overflow-hidden border border-slate-200">
-                      <img
-                        src={selectedImage}
-                        alt="Selected"
-                        className="w-full h-auto"
-                      />
-                      {results && (
-                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                          <CheckCircle className="w-16 h-16 text-green-400" />
+                    <div className="space-y-2">
+                      <div className="relative bg-white rounded-lg overflow-hidden border border-slate-200">
+                        <img
+                          src={selectedImage}
+                          alt="Selected"
+                          className="w-full h-auto"
+                        />
+                        {results && (
+                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                            <CheckCircle className="w-16 h-16 text-green-400" />
+                          </div>
+                        )}
+                      </div>
+                      {imageSize && (
+                        <div className="text-xs text-slate-500 text-center">
+                          {imageSize.width} × {imageSize.height} pixels
                         </div>
                       )}
                     </div>
@@ -282,7 +746,7 @@ export default function Recognition() {
                 </div>
               )}
 
-              {activeTab === "webcam" && (
+              {!isBatchMode && activeTab === "webcam" && (
                 <div className="space-y-4">
                   {!isCameraActive ? (
                     <div className="space-y-4">
@@ -381,6 +845,32 @@ export default function Recognition() {
                   <h3 className="font-semibold text-slate-900">
                     Model Settings
                   </h3>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700 flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Sliders className="w-4 h-4" />
+                      Confidence Threshold
+                    </span>
+                    <span className="text-blue-600 font-semibold">{confidenceThreshold}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={confidenceThreshold}
+                    onChange={(e) => {
+                      setConfidenceThreshold(Number(e.target.value));
+                      if (results && selectedImage) {
+                        drawAnnotations(selectedImage, results.faces);
+                      }
+                    }}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Only show detections above {confidenceThreshold}% confidence
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -535,11 +1025,96 @@ export default function Recognition() {
                     </div>
                   </div>
 
-                  <button className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm">
+                  <button 
+                    onClick={handleDownloadReport}
+                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm">
                     <Download className="w-4 h-4" />
-                    Download Report
+                    Download Report (JSON)
+                  </button>
+
+                  <button 
+                    onClick={downloadAnnotatedImage}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm">
+                    <ImageIcon className="w-4 h-4" />
+                    Download Annotated Image
                   </button>
                 </div>
+              </div>
+
+              {/* Hidden canvas for annotations */}
+              <canvas ref={annotatedCanvasRef} className="hidden" />
+            </div>
+          )}
+
+          {/* Batch Results */}
+          {isBatchMode && batchResults.length > 0 && (
+            <div className="mt-6 space-y-4">
+              <div className="bg-white rounded-lg border border-slate-200 p-6">
+                <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  Batch Processing Results ({batchResults.length} images)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {batchResults.map((result, idx) => (
+                    <div key={idx} className="border border-slate-200 rounded-lg p-4">
+                      <div className="flex gap-3">
+                        <img src={result.image} alt={`Result ${idx + 1}`} className="w-24 h-24 object-cover rounded-lg" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium text-slate-900">Image #{idx + 1}</span>
+                            {result.success ? (
+                              <CheckCircle className="w-5 h-5 text-green-600" />
+                            ) : (
+                              <AlertCircle className="w-5 h-5 text-red-600" />
+                            )}
+                          </div>
+                          {result.success ? (
+                            <>
+                              <p className="text-sm text-slate-600">
+                                Faces: <span className="font-semibold text-slate-900">{result.data.num_faces || 0}</span>
+                              </p>
+                              <p className="text-sm text-slate-600">
+                                Primary: <span className="font-semibold text-slate-900 capitalize">{result.data.expression}</span> ({(result.data.confidence * 100).toFixed(1)}%)
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-sm text-red-600">{result.error}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    const report = {
+                      timestamp: new Date().toISOString(),
+                      totalImages: batchResults.length,
+                      successful: batchResults.filter(r => r.success).length,
+                      failed: batchResults.filter(r => !r.success).length,
+                      results: batchResults.map((r, idx) => ({
+                        imageNumber: idx + 1,
+                        success: r.success,
+                        faces: r.success ? r.data.num_faces : 0,
+                        expression: r.success ? r.data.expression : null,
+                        confidence: r.success ? r.data.confidence : null,
+                      }))
+                    };
+                    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `batch-emotion-report-${Date.now()}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="w-full mt-4 bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Batch Report
+                </button>
               </div>
             </div>
           )}

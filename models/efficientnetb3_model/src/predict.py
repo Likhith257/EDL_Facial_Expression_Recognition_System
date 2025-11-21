@@ -43,7 +43,7 @@ class EmotionPredictor:
         )
         
         # Load checkpoint
-        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
         if 'model_state_dict' in checkpoint:
             self.model.load_state_dict(checkpoint['model_state_dict'])
         else:
@@ -51,20 +51,56 @@ class EmotionPredictor:
         
         self.model.eval()
         
-        # Transforms
+        # Transforms with improved preprocessing for real-world images
         self.transform = transforms.Compose([
             transforms.Resize((self.img_size, self.img_size)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
         
-        # Face detector
+        # Multiple face detectors for better robustness
         self.face_cascade = cv2.CascadeClassifier(
             cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
         )
+        self.face_cascade_alt = cv2.CascadeClassifier(
+            cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
+        )
     
-    def predict_image(self, image):
-        """Predict emotion from PIL Image"""
+    def preprocess_face(self, face_img):
+        """Enhanced preprocessing for real-world images"""
+        # Convert to grayscale for processing
+        if len(face_img.size) == 3:
+            gray = face_img.convert('L')
+        else:
+            gray = face_img
+        
+        # Convert back to RGB
+        if face_img.mode != 'RGB':
+            face_img = face_img.convert('RGB')
+        
+        # Convert to numpy for enhancement
+        img_array = np.array(face_img)
+        
+        # Enhance contrast and brightness for better recognition
+        # Apply histogram equalization on luminance channel
+        img_yuv = cv2.cvtColor(img_array, cv2.COLOR_RGB2YUV)
+        img_yuv[:,:,0] = cv2.equalizeHist(img_yuv[:,:,0])
+        img_enhanced = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2RGB)
+        
+        # Reduce noise
+        img_enhanced = cv2.bilateralFilter(img_enhanced, 5, 50, 50)
+        
+        # Convert back to PIL
+        face_pil = Image.fromarray(img_enhanced)
+        
+        return face_pil
+    
+    def predict_image(self, image, apply_enhancement=True):
+        """Predict emotion from PIL Image with optional preprocessing"""
+        # Apply enhanced preprocessing for real-world images
+        if apply_enhancement:
+            image = self.preprocess_face(image)
+        
         # Transform
         img_tensor = self.transform(image).unsqueeze(0).to(self.device)
         

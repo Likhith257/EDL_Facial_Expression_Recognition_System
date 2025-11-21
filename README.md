@@ -11,32 +11,32 @@
 
 ---
 
-## 🚀 Features
+## Features
 
-- **Multi-Model Support**: YOLOv8, EfficientNet-B3, EfficientNetV2, ArcFace, Swin Transformer, Vision Transformer
+- **Multi-Model Support**: YOLOv8 and EfficientNet-B3 for facial expression recognition
 - **Web Interface**: Modern React + TypeScript frontend with real-time detection
 - **7 Emotion Classes**: Angry, Disgust, Fear, Happy, Neutral, Sad, Surprised
 - **Multiple Input Methods**: Upload images or use webcam for live detection
 - **RESTful API**: FastAPI backend with automatic documentation
-- **High Accuracy**: 95%+ accuracy with YOLOv8 model
+- **High Accuracy**: 72.9% mAP50 with YOLOv8, 72.1% validation accuracy with EfficientNet-B3
 - **GPU Support**: Automatic CUDA/MPS/CPU detection
+- **Real-World Image Support**: Enhanced preprocessing for photos outside the training dataset
+- **Batch Processing**: Analyze multiple images simultaneously
+- **Confidence Control**: Adjustable threshold slider for detection sensitivity
 
 ---
 
-## 📊 Model Status
+## Model Status
 
 | Model | Status | Accuracy | Features |
 |-------|--------|----------|----------|
-| YOLOv8 | ✅ Complete | 95%+ | Detection + Classification |
-| EfficientNet-B3 | ✅ Complete | 92%+ | Classification with CBAM |
-| EfficientNetV2 | 🚧 Partial | - | Training only |
-| ArcFace | ⏳ Planned | - | Face embedding |
-| Swin Transformer | ⏳ Planned | - | Transformer-based |
-| Vision Transformer | ⏳ Planned | - | Pure transformer |
+| YOLOv8 | ✅ Complete | 72.9% mAP50 | Detection + Classification |
+| EfficientNet-B3 | ✅ Complete | 72.1% val acc | Classification with CBAM |
+| EfficientNetV2 | 🔄 In Progress | - | Training framework ready |
 
 ---
 
-## 🛠️ Installation
+## Installation
 
 ### Prerequisites
 
@@ -70,7 +70,7 @@ cd ..
 
 ---
 
-## 🎯 Quick Start
+## Quick Start
 
 ### Web Interface (Recommended)
 
@@ -108,7 +108,7 @@ python main.py --framework yolo --all
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 EDL_Facial_Expression_Recognition_System/
@@ -129,7 +129,7 @@ See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for detailed structur
 
 ---
 
-## 🌐 Web Interface
+## Web Interface
 
 ### Features
 
@@ -148,7 +148,7 @@ See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for detailed structur
 
 ---
 
-## 📖 Dataset
+## Dataset
 
 The system expects YOLO format dataset:
 
@@ -169,7 +169,7 @@ dataset/
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 ### Model Selection
 
@@ -196,7 +196,7 @@ The system automatically detects available hardware:
 
 ---
 
-## 📊 Training
+## Training
 
 ```bash
 # Train YOLOv8
@@ -213,7 +213,7 @@ Training outputs are saved to `models/{framework}/runs/` and `runs/detect/`.
 
 ---
 
-## 🧪 Evaluation
+## Evaluation
 
 ```bash
 # Evaluate trained model
@@ -228,7 +228,7 @@ python main.py --framework yolo --evaluate
 
 ---
 
-## 👥 Contributors
+## Contributors
 
 - [Likhith](https://github.com/Likhith257)
 - Thanish Chinnappa KC
@@ -238,7 +238,7 @@ python main.py --framework yolo --evaluate
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
@@ -250,7 +250,7 @@ Sundareshwar S, Tenzin Kunga
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics) - State-of-the-art object detection
 - [PyTorch](https://pytorch.org/) - Deep learning framework
@@ -259,28 +259,10 @@ Sundareshwar S, Tenzin Kunga
 
 ---
 
-## 📞 Support
+## Support
 
-For issues, questions, or contributions:
-- 🐛 [Report a Bug](https://github.com/Likhith257/EDL_Facial_Expression_Recognition_System/issues)
-- 💡 [Request a Feature](https://github.com/Likhith257/EDL_Facial_Expression_Recognition_System/issues)
-- 📧 Contact: See GitHub profiles
+For issues or questions, please contact the contributors via their GitHub profiles.
 
 ---
 
-## 🔮 Roadmap
-
-- [x] YOLOv8 implementation
-- [x] EfficientNet-B3 implementation
-- [x] Web interface with React
-- [x] Webcam support
-- [ ] ArcFace model integration
-- [ ] Swin Transformer implementation
-- [ ] Vision Transformer implementation
-- [ ] Real-time video processing
-- [ ] Mobile app version
-- [ ] Docker deployment
-
----
-
-**⭐ If you find this project useful, please consider giving it a star!**
+**If you find this project useful, please consider giving it a star!**
