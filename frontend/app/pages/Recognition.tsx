@@ -312,7 +312,9 @@ export default function Recognition() {
         ? 'YOLOv8'
         : actualFramework === 'efficientnetb3' || actualFramework === 'efficientb3'
           ? 'EfficientNet-B3'
-          : recognitionNames[recognitionModel];
+          : actualFramework === 'arcface'
+            ? 'ArcFace (ResNet-18)'
+            : recognitionNames[recognitionModel];
 
       setResults({
         detected: faces.length > 0,

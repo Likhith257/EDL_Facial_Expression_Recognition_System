@@ -103,6 +103,9 @@ def evaluate_model(framework='yolo', model_size='yolov8n'):
         eval_main()
     elif framework == 'efficientnetv2':
         print("Evaluation script for EfficientNetV2 not yet implemented.")
+    elif framework == 'arcface':
+        print("Evaluation for ArcFace model completed during training.")
+        print("Check the training logs for validation metrics.")
     else:
         print("Evaluation not yet implemented for this framework")
 
@@ -120,6 +123,9 @@ def run_inference(framework='yolo', model_size='yolov8n'):
         predict_main()
     elif framework == 'efficientnetv2':
         print("Inference script for EfficientNetV2 not yet implemented.")
+    elif framework == 'arcface':
+        from models.arcface_model.src.predict import main as predict_main
+        predict_main()
     else:
         print("Inference not yet implemented for this framework")
 
@@ -635,6 +641,8 @@ def main():
         print(f"Using YOLOv8 ({args.model}) for Detection and Classification")
     elif args.framework == 'efficientnet':
         print("Using EfficientNet-B3 with CBAM Attention")
+    elif args.framework == 'arcface':
+        print("Using ArcFace with ResNet-18 Backbone and Angular Margin Loss")
     elif args.framework == 'efficientnetv2':
         print("Using EfficientNetV2-S for High-Accuracy Classification")
     elif args.framework == 'vit':

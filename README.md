@@ -13,7 +13,7 @@
 
 ## Features
 
-- **Multi-Model Support**: YOLOv8 and EfficientNet-B3 for facial expression recognition
+- **Multi-Model Support**: YOLOv8, EfficientNet-B3, and ArcFace for facial expression recognition
 - **Web Interface**: Modern React + TypeScript frontend with real-time detection
 - **7 Emotion Classes**: Angry, Disgust, Fear, Happy, Neutral, Sad, Surprised
 - **Multiple Input Methods**: Upload images or use webcam for live detection
@@ -32,6 +32,7 @@
 |-------|--------|----------|----------|
 | YOLOv8 | ✅ Complete | 72.9% mAP50 | Detection + Classification |
 | EfficientNet-B3 | ✅ Complete | 72.1% val acc | Classification with CBAM |
+| ArcFace (ResNet-18) | ✅ Complete | - | Angular Margin Loss |
 | EfficientNetV2 | 🔄 In Progress | - | Training framework ready |
 
 ---
@@ -104,6 +105,7 @@ python main.py --framework yolo --all
 
 - `yolo` - YOLOv8 (default)
 - `efficientnetb3` - EfficientNet-B3
+- `arcface` - ArcFace with ResNet-18 backbone
 - `efficientnetv2` - EfficientNetV2
 
 ---
@@ -135,7 +137,7 @@ See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for detailed structur
 
 - **Image Upload**: Drag and drop or click to upload
 - **Webcam Support**: Real-time capture from camera
-- **Model Selection**: Switch between YOLOv8 and EfficientNet-B3
+- **Model Selection**: Switch between YOLOv8, EfficientNet-B3, and ArcFace
 - **Live Results**: Instant emotion detection with confidence scores
 - **Multiple Faces**: Detect and analyze multiple faces simultaneously
 
