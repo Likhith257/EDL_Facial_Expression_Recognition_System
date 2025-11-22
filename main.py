@@ -26,7 +26,7 @@ def check_dependencies(framework='yolo'):
         ]
     else:  # arcface, vit, swin
         required_packages = [
-            'torch', 'cv2', 'numpy', 
+            'torch', 'torchvision', 'cv2', 'numpy', 
             'sklearn', 'matplotlib', 'pandas'
         ]
     
@@ -82,6 +82,9 @@ def train_model(framework='yolo', model_size='yolov8n', memory_profile='default'
         train_main()
     elif framework == 'efficientnetv2':
         from models.efficientnetv2_model.src.train import main as train_main
+        train_main()
+    elif framework == 'arcface':
+        from models.arcface_model.src.train import main as train_main
         train_main()
     else:
         print("Training not yet implemented for this framework")
@@ -304,7 +307,7 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
                 predictor = EmotionPredictor(
                     checkpoint_path=checkpoint_path,
                     config_path=Path("models/efficientnetb3_model/config.yaml"),
-                    device='mps'
+                    device='cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
                 )
                 
                 # Read image
@@ -393,12 +396,121 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
                 }
                 return JSONResponse(content=result)
             
+            elif selected_framework == 'arcface':
+                # Use ArcFace model
+                import torch
+                from PIL import Image
+                
+                checkpoint_path = Path("models/arcface_model/arcface_model.pt")
+                if not checkpoint_path.exists():
+                    return JSONResponse(
+                        content={
+                            "error": "ArcFace model weights not found. Please train the model first.",
+                            "path": str(checkpoint_path)
+                        },
+                        status_code=404
+                    )
+                
+                # Import predictor
+                # We need to be careful with sys.path to avoid conflicts if multiple models have 'src.predict'
+                # But here we are inside a function, so imports are local scope-ish, but sys.path is global.
+                # Better to use absolute imports if possible, but the structure relies on 'src'
+                # Let's append temporarily
+                model_src = str(Path("models/arcface_model/src"))
+                if model_src not in sys.path:
+                    sys.path.insert(0, model_src)
+                
+                try:
+                    # Force reload to ensure we get the right module if names collide
+                    import predict
+                    import importlib
+                    importlib.reload(predict)
+                    from predict import EmotionPredictor
+                except ImportError:
+                    # Fallback
+                    from models.arcface_model.src.predict import EmotionPredictor
+
+                # Initialize predictor
+                predictor = EmotionPredictor(
+                    checkpoint_path=checkpoint_path,
+                    device='cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+                )
+                
+                # Read image
+                image = cv2.imread(tmp_path)
+                if image is None:
+                    return JSONResponse(
+                        content={"error": "Could not read uploaded image"},
+                        status_code=400
+                    )
+                
+                # Convert to grayscale for face detection
+                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                gray = cv2.equalizeHist(gray)
+                
+                # Detect faces
+                faces = predictor.face_cascade.detectMultiScale(
+                    gray, 
+                    scaleFactor=1.05,
+                    minNeighbors=3,
+                    minSize=(48, 48),
+                    flags=cv2.CASCADE_SCALE_IMAGE
+                )
+                
+                if len(faces) == 0:
+                    faces = predictor.face_cascade_alt.detectMultiScale(
+                        gray, scaleFactor=1.05, minNeighbors=3, minSize=(48, 48), flags=cv2.CASCADE_SCALE_IMAGE
+                    )
+                
+                predictions = []
+                for (x, y, w, h) in faces:
+                    padding = int(max(w, h) * 0.1)
+                    x1 = max(0, x - padding)
+                    y1 = max(0, y - padding)
+                    x2 = min(image.shape[1], x + w + padding)
+                    y2 = min(image.shape[0], y + h + padding)
+                    
+                    face_img = image[y1:y2, x1:x2]
+                    if face_img.shape[0] < 48 or face_img.shape[1] < 48:
+                        continue
+                    
+                    face_pil = Image.fromarray(cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB))
+                    emotion, confidence = predictor.predict_image(face_pil, apply_enhancement=True)
+                    
+                    predictions.append({
+                        "expression": emotion,
+                        "confidence": round(confidence, 3),
+                        "bbox": {
+                            "x1": float(x), "y1": float(y), "x2": float(x + w), "y2": float(y + h)
+                        }
+                    })
+                
+                if not predictions:
+                    return JSONResponse(content={
+                        "error": "No faces detected",
+                        "predictions": [],
+                        "framework": "arcface",
+                        "model": "resnet18-arcface"
+                    })
+                
+                predictions.sort(key=lambda x: x['confidence'], reverse=True)
+                
+                result = {
+                    "expression": predictions[0]["expression"],
+                    "confidence": predictions[0]["confidence"],
+                    "all_detections": predictions,
+                    "num_faces": len(predictions),
+                    "framework": "arcface",
+                    "model": "resnet18-arcface"
+                }
+                return JSONResponse(content=result)
+
             else:
                 return JSONResponse(
                     content={
-                        "error": f"Framework '{selected_framework}' not yet implemented for API. Available: yolo, efficientb3",
+                        "error": f"Framework '{selected_framework}' not yet implemented for API. Available: yolo, efficientb3, arcface",
                         "framework": selected_framework,
-                        "note": "ArcFace, Swin, and ViT models are not yet implemented"
+                        "note": "Swin and ViT models are not yet implemented"
                     },
                     status_code=501
                 )

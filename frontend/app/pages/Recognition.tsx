@@ -43,7 +43,7 @@ export default function Recognition() {
   const annotatedCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [imageSize, setImageSize] = useState<{width: number, height: number} | null>(null);
+  const [imageSize, setImageSize] = useState<{ width: number, height: number } | null>(null);
   const [confidenceThreshold, setConfidenceThreshold] = useState(25);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -225,17 +225,17 @@ export default function Recognition() {
       try {
         const response = await fetch(selectedImages[i]);
         const blob = await response.blob();
-        
+
         const formData = new FormData();
         formData.append('file', blob, `image-${i}.jpg`);
         formData.append('detection_model', detectionModel);
         formData.append('recognition_model', recognitionModel);
-        
+
         const apiResponse = await fetch('/api/predict', {
           method: 'POST',
           body: formData,
         });
-        
+
         if (apiResponse.ok) {
           const data = await apiResponse.json();
           results.push({ success: true, data, image: selectedImages[i] });
@@ -259,28 +259,28 @@ export default function Recognition() {
 
     try {
       const startTime = Date.now();
-      
+
       const response = await fetch(selectedImage);
       const blob = await response.blob();
-      
+
       const formData = new FormData();
       formData.append('file', blob, 'image.jpg');
       formData.append('detection_model', detectionModel);
       formData.append('recognition_model', recognitionModel);
-      
+
       const apiResponse = await fetch('/api/predict', {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!apiResponse.ok) {
         const errorData = await apiResponse.json();
         throw new Error(errorData.error || 'Prediction failed');
       }
-      
+
       const data = await apiResponse.json();
       const processingTime = Date.now() - startTime;
-      
+
       const modelNames: Record<DetectionModel, string> = {
         yolo: "YOLOv8",
         efficientb3: "EfficientNet-B3",
@@ -293,7 +293,7 @@ export default function Recognition() {
         swin: "Swin Transformer",
         vit: "Vision Transformer (ViT)",
       };
-      
+
       const faces = data.all_detections?.map((detection: any, index: number) => ({
         id: index + 1,
         confidence: (detection.confidence * 100).toFixed(1),
@@ -308,11 +308,11 @@ export default function Recognition() {
       })) || [];
 
       const actualFramework = data.framework || 'yolo';
-      const displayRecognitionModel = actualFramework === 'yolo' 
+      const displayRecognitionModel = actualFramework === 'yolo'
         ? 'YOLOv8'
         : actualFramework === 'efficientnetb3' || actualFramework === 'efficientb3'
-        ? 'EfficientNet-B3'
-        : recognitionNames[recognitionModel];
+          ? 'EfficientNet-B3'
+          : recognitionNames[recognitionModel];
 
       setResults({
         detected: faces.length > 0,
@@ -335,11 +335,11 @@ export default function Recognition() {
 
       // Draw annotations on canvas
       drawAnnotations(selectedImage, faces);
-      
+
       setTimeout(() => {
         document.querySelector('.results-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
-      
+
     } catch (err: any) {
       setError(err.message || 'Failed to process image');
       setResults(null);
@@ -351,19 +351,19 @@ export default function Recognition() {
   const startCamera = async () => {
     try {
       setError(null);
-      
+
       // Check if getUserMedia is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setError("Camera access is not supported in this browser or context. Please use a modern browser and ensure the page is served over HTTPS or localhost.");
         return;
       }
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
           width: { ideal: 1280 },
           height: { ideal: 720 },
           facingMode: 'user'
-        } 
+        }
       });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -373,7 +373,7 @@ export default function Recognition() {
       }
     } catch (err: any) {
       let errorMessage = "Unable to access camera. ";
-      
+
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         errorMessage += "Camera access was denied. Please allow camera permissions in your browser settings and try again.";
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
@@ -397,7 +397,7 @@ export default function Recognition() {
       } else {
         errorMessage += `Error: ${err.message || 'Unknown error'}`;
       }
-      
+
       setError(errorMessage);
       console.error('Camera error:', err);
     }
@@ -479,7 +479,7 @@ export default function Recognition() {
 
   const handleDownloadReport = () => {
     if (!results) return;
-    
+
     const report = {
       timestamp: new Date().toISOString(),
       detectionModel: results.detectionModel,
@@ -494,7 +494,7 @@ export default function Recognition() {
         position: face.position
       }))
     };
-    
+
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -538,11 +538,10 @@ export default function Recognition() {
               </button>
               <button
                 onClick={() => setIsBatchMode(!isBatchMode)}
-                className={`px-4 py-2 border rounded-lg transition flex items-center gap-2 ${
-                  isBatchMode
+                className={`px-4 py-2 border rounded-lg transition flex items-center gap-2 ${isBatchMode
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700'
-                }`}
+                  }`}
               >
                 <FileImage className="w-4 h-4" />
                 Batch Mode {isBatchMode && '✓'}
@@ -590,22 +589,20 @@ export default function Recognition() {
                 <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
                   <button
                     onClick={() => handleTabChange("upload")}
-                    className={`flex-1 px-4 py-2 rounded-md font-medium transition ${
-                      activeTab === "upload"
+                    className={`flex-1 px-4 py-2 rounded-md font-medium transition ${activeTab === "upload"
                         ? "bg-white text-blue-600 shadow-sm"
                         : "text-slate-600 hover:text-slate-900"
-                    }`}
+                      }`}
                   >
                     <Upload className="w-4 h-4 inline mr-2" />
                     Upload Image
                   </button>
                   <button
                     onClick={() => handleTabChange("webcam")}
-                    className={`flex-1 px-4 py-2 rounded-md font-medium transition ${
-                      activeTab === "webcam"
+                    className={`flex-1 px-4 py-2 rounded-md font-medium transition ${activeTab === "webcam"
                         ? "bg-white text-blue-600 shadow-sm"
                         : "text-slate-600 hover:text-slate-900"
-                    }`}
+                      }`}
                   >
                     <Camera className="w-4 h-4 inline mr-2" />
                     Webcam
@@ -696,11 +693,10 @@ export default function Recognition() {
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      className={`rounded-lg text-center transition border-2 border-dashed p-8 md:p-32 cursor-pointer ${
-                        isDragging
+                      className={`rounded-lg text-center transition border-2 border-dashed p-8 md:p-32 cursor-pointer ${isDragging
                           ? "border-blue-500 bg-blue-100"
                           : "border-slate-300 hover:border-blue-400 hover:bg-blue-50"
-                      }`}
+                        }`}
                     >
                       <Upload className="w-12 h-12 text-slate-400 mx-auto mb-3" />
                       <p className="font-semibold text-slate-900 mb-1">
@@ -922,7 +918,7 @@ export default function Recognition() {
                     <option value="efficientb3">
                       EfficientNet-B3 (Lightweight) ✓
                     </option>
-                    <option value="arcface" disabled>ArcFace (Coming Soon)</option>
+                    <option value="arcface">ArcFace (ResNet-18) ✓</option>
                     <option value="swin" disabled>Swin Transformer (Coming Soon)</option>
                     <option value="vit" disabled>Vision Transformer (Coming Soon)</option>
                   </select>
@@ -932,7 +928,7 @@ export default function Recognition() {
                       : recognitionModel === "efficientb3"
                         ? "EfficientNet-B3 with CBAM attention for improved accuracy"
                         : recognitionModel === "arcface"
-                          ? "⚠️ Not yet implemented - will use YOLO"
+                          ? "ArcFace with ResNet-18 backbone and angular margin loss"
                           : recognitionModel === "swin"
                             ? "⚠️ Not yet implemented - will use YOLO"
                             : "⚠️ Not yet implemented - will use YOLO"}
@@ -941,11 +937,11 @@ export default function Recognition() {
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-xs text-blue-800">
-                    <span className="font-semibold">Available Models:</span> YOLOv8 and EfficientNet-B3 are fully implemented. ArcFace, Swin, and ViT are coming soon.
+                    <span className="font-semibold">Available Models:</span> YOLOv8, EfficientNet-B3, and ArcFace are fully implemented. Swin and ViT are coming soon.
                   </p>
                 </div>
 
-                {(recognitionModel === 'arcface' || recognitionModel === 'swin' || recognitionModel === 'vit') && (
+                {(recognitionModel === 'swin' || recognitionModel === 'vit') && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                     <p className="text-xs text-amber-800">
                       <span className="font-semibold">⚠️ Note:</span> Selected model is not yet implemented. The system will use YOLOv8 for inference.
@@ -1036,14 +1032,14 @@ export default function Recognition() {
                     </div>
                   </div>
 
-                  <button 
+                  <button
                     onClick={handleDownloadReport}
                     className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm">
                     <Download className="w-4 h-4" />
                     Download Report (JSON)
                   </button>
 
-                  <button 
+                  <button
                     onClick={downloadAnnotatedImage}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm">
                     <ImageIcon className="w-4 h-4" />
