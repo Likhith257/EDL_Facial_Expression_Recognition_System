@@ -19,12 +19,7 @@ def check_dependencies(framework='yolo'):
             'torch', 'torchvision', 'cv2', 'numpy', 
             'sklearn', 'matplotlib', 'pandas', 'PIL'
         ]
-    elif framework == 'efficientnetv2':
-        required_packages = [
-            'torch', 'torchvision', 'cv2', 'numpy',
-            'sklearn', 'matplotlib', 'pandas', 'PIL'
-        ]
-    else:  # arcface, vit, swin
+    else:  # arcface
         required_packages = [
             'torch', 'torchvision', 'cv2', 'numpy', 
             'sklearn', 'matplotlib', 'pandas'
@@ -61,9 +56,6 @@ def prepare_dataset(framework='yolo'):
     elif framework in ['efficientnet', 'efficientnetb3']:
         print("Using shared dataset (already prepared by YOLO)")
         print("EfficientNet-B3 uses the same dataset structure")
-    elif framework == 'efficientnetv2':
-        print("Expecting pre-cropped classification dataset (train/ val folders by class)")
-        print("Use forthcoming face-crop script to build this dataset.")
     else:
         print("Dataset preparation not yet implemented for this framework")
         print("Use YOLO dataset preparation: python main.py --framework yolo --prepare")
@@ -79,9 +71,6 @@ def train_model(framework='yolo', model_size='yolov8n', memory_profile='default'
         train_main(model_size=model_size, memory_profile=memory_profile)
     elif framework in ['efficientnet', 'efficientnetb3']:
         from models.efficientnetb3_model.src.train import main as train_main
-        train_main()
-    elif framework == 'efficientnetv2':
-        from models.efficientnetv2_model.src.train import main as train_main
         train_main()
     elif framework == 'arcface':
         from models.arcface_model.src.train import main as train_main
@@ -101,8 +90,6 @@ def evaluate_model(framework='yolo', model_size='yolov8n'):
     elif framework in ['efficientnet', 'efficientnetb3']:
         from models.efficientnetb3_model.src.evaluate import main as eval_main
         eval_main()
-    elif framework == 'efficientnetv2':
-        print("Evaluation script for EfficientNetV2 not yet implemented.")
     elif framework == 'arcface':
         print("Evaluation for ArcFace model completed during training.")
         print("Check the training logs for validation metrics.")
@@ -121,8 +108,6 @@ def run_inference(framework='yolo', model_size='yolov8n'):
     elif framework in ['efficientnet', 'efficientnetb3']:
         from models.efficientnetb3_model.src.predict import main as predict_main
         predict_main()
-    elif framework == 'efficientnetv2':
-        print("Inference script for EfficientNetV2 not yet implemented.")
     elif framework == 'arcface':
         from models.arcface_model.src.predict import main as predict_main
         predict_main()
@@ -557,7 +542,7 @@ def main():
         '--framework',
         type=str,
         default='yolo',
-        choices=['yolo', 'arcface', 'efficientnet', 'efficientnetb3', 'efficientnetv2', 'vit', 'swin', 'yolov8n', 'yolov8s', 'yolov8m', 'yolov8l', 'yolov8x'],
+        choices=['yolo', 'arcface', 'efficientnet', 'efficientnetb3', 'yolov8n', 'yolov8s', 'yolov8m', 'yolov8l', 'yolov8x'],
         help='Choose framework: yolo, efficientnet(b3/v2), vit, swin, or yolov8[n/s/m/l/x] shorthand (default: yolo)'
     )
     
@@ -646,12 +631,6 @@ def main():
         print("Using EfficientNet-B3 with CBAM Attention")
     elif args.framework == 'arcface':
         print("Using ArcFace with ResNet-18 Backbone and Angular Margin Loss")
-    elif args.framework == 'efficientnetv2':
-        print("Using EfficientNetV2-S for High-Accuracy Classification")
-    elif args.framework == 'vit':
-        print("Using Vision Transformer (ViT)")
-    elif args.framework == 'swin':
-        print("Using Swin Transformer")
     else:
         print(f"Using {args.framework.upper()} for Facial Expression Recognition")
     print("=" * 60)

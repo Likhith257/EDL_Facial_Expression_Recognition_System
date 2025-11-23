@@ -5,13 +5,13 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-purple.svg)](https://github.com/ultralytics/ultralytics)
 
-> A production-ready facial expression recognition system supporting multiple deep learning architectures including YOLOv8, EfficientNet-B3, EfficientNetV2, and ArcFace.
+> A production-ready facial expression recognition system supporting multiple deep learning architectures including YOLOv8, EfficientNet-B3, and ArcFace.
 
 ---
 
 ## 🚀 Features
 
-- ✅ **Multiple Model Architectures**: YOLOv8, EfficientNet-B3, EfficientNetV2, ArcFace
+- ✅ **Multiple Model Architectures**: YOLOv8, EfficientNet-B3, ArcFace
 - ✅ **7 Emotion Classes**: Angry, Disgust, Fear, Happy, Neutral, Sad, Surprised
 - ✅ **Complete Pipeline**: Dataset preparation, training, evaluation, and inference
 - ✅ **Web Interface**: FastAPI backend with modern frontend
