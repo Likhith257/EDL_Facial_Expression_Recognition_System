@@ -1,8 +1,0 @@
-deepface[all]>=0.0.75  # Includes all backends (RetinaFace, SFace)
-tensorflow-cpu>=2.10   # CPU-only TensorFlow
-opencv-python>=4.5     # Image processing
-numpy>=1.21            # Array operations
-pandas>=1.5            # Data handling
-scikit-learn>=1.0      # Evaluation metrics
-matplotlib>=3.5        # Visualization
-tqdm>=4.60             # Progress bars
