@@ -11,11 +11,10 @@
 
 ## ✨ Highlights
 
-- 🎯 **Optimized for Production**: All models use AdamW, cosine annealing, label smoothing, and advanced augmentation
+- 🎯 **Optimized for Production**: All models use AdamW, cosine annealing, conservative augmentation
 - 🚀 **Fast Inference**: FP16 mixed precision, optimized NMS, batch processing support
 - 🎓 **7 Emotion Classes**: Angry, Disgust, Fear, Happy, Neutral, Sad, Surprised
 - 🌐 **Web Interface**: FastAPI backend with modern React + TypeScript frontend
-- 🐳 **Docker Ready**: Single-command deployment
 - 📊 **Real-time Detection**: 30-50ms per image on Apple M4 Pro
 
 ---
@@ -24,24 +23,17 @@
 
 ### Core Capabilities
 - ✅ **3 Model Architectures**: YOLOv8n (detection+classification), EfficientNet-B3 (CBAM attention), ArcFace (metric learning)
-- ✅ **Production-Ready Training**: State-of-the-art optimizations (see [OPTIMIZATION_SUMMARY.md](OPTIMIZATION_SUMMARY.md))
+- ✅ **Production-Ready Training**: State-of-the-art optimizations with conservative augmentation
 - ✅ **Complete Pipeline**: Dataset prep → Training → Evaluation → Inference
 - ✅ **GPU Acceleration**: CUDA, Apple MPS (M-series), and CPU fallback
 - ✅ **RESTful API**: FastAPI with automatic Swagger documentation
 - ✅ **Real-time Web UI**: Upload images or use webcam for live detection
 
 ### Advanced Features
-- 📈 **High Accuracy**: Optimized training yields +2-8% accuracy gains
+- 📈 **High Accuracy**: Conservative augmentation prevents overfitting
 - ⚡ **Fast Speed**: 30-40% faster inference with FP16 and optimized parameters
-- 🔧 **Flexible Deployment**: Python CLI, Docker, or REST API
-- 📊 **Comprehensive Docs**: Training guides, API reference, optimization techniques
+- 🔧 **Flexible Deployment**: Python CLI or REST API
 
-### Documentation
-- 📖 **[OPTIMIZATION_SUMMARY.md](OPTIMIZATION_SUMMARY.md)** - Model optimization details
-- 📖 **[RETRAIN_GUIDE.md](RETRAIN_GUIDE.md)** - Step-by-step training instructions
-- 📖 **[ADVANCED_OPTIMIZATION.md](ADVANCED_OPTIMIZATION.md)** - Quantization, ONNX, TensorRT
-- 📖 **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - REST API reference
-- 📖 **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Installation and deployment
 ---
 
 ## 📁 Project Structure
@@ -50,12 +42,7 @@
 EDL_Facial_Expression_Recognition_System/
 ├── main.py                     # Main entry point with CLI
 ├── requirements.txt            # Python dependencies
-├── Dockerfile                  # Docker configuration
-├── docker-compose.yml          # Docker Compose setup
 ├── README.md                   # This file
-├── FEATURES.md                 # Detailed features list
-├── API_DOCUMENTATION.md        # API reference
-├── SETUP_GUIDE.md             # Setup instructions
 ├── LICENSE                     # MIT License
 │
 ├── dataset/                    # Training dataset (YOLO format)
@@ -142,17 +129,6 @@ python src/train.py
 # Train ArcFace (~3-4 hours)
 cd models/arcface_model
 python src/train.py
-```
-
-**See [RETRAIN_GUIDE.md](RETRAIN_GUIDE.md) for detailed training instructions.**
-
-### 4. Docker Deployment
-
-```bash
-# Build and run
-docker-compose up --build
-
-# Access at http://localhost:8000
 ```
 
 ---
@@ -258,15 +234,6 @@ python main.py --serve --skip-deps
 
 ---
 
-## 📚 Documentation
-
-- **[API Documentation](API_DOCUMENTATION.md)** - Complete REST API reference
-- **[Setup Guide](SETUP_GUIDE.md)** - Detailed installation and deployment
-- **[Features](FEATURES.md)** - Comprehensive feature list
-- **[Interactive API Docs](http://localhost:8000/docs)** - Swagger UI (when server running)
-
----
-
 ## 🛠️ Development
 
 ### Adding New Models
@@ -327,17 +294,8 @@ ls -R dataset/
 
 ---
 
-## 📚 Additional Resources
+## 📚 Training Tips
 
-### Key Documents
-- **[OPTIMIZATION_SUMMARY.md](OPTIMIZATION_SUMMARY.md)** - Detailed model optimization techniques and results
-- **[RETRAIN_GUIDE.md](RETRAIN_GUIDE.md)** - Complete retraining instructions with hyperparameters
-- **[ADVANCED_OPTIMIZATION.md](ADVANCED_OPTIMIZATION.md)** - Production techniques (quantization, ONNX, TensorRT)
-- **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - REST API endpoints and examples
-- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Deployment and configuration guide
-- **[FEATURES.md](FEATURES.md)** - Complete feature list
-
-### Training Tips
 1. **Start with YOLOv8n** - Fastest to train, good baseline accuracy
 2. **Use GPU acceleration** - 5-10x faster training (CUDA or Apple MPS)
 3. **Monitor training** - Watch for overfitting, use early stopping
