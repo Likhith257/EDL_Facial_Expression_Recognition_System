@@ -4,47 +4,56 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, models
-import cv2
+from PIL import Image
 import numpy as np
 from pathlib import Path
 import argparse
 
 class FaceDataset(Dataset):
+    """Dataset loader for YOLO format (images + labels)"""
     def __init__(self, img_dir, label_dir, transform=None):
+        """
+        Args:
+            img_dir: Path to images folder
+            label_dir: Path to labels folder (YOLO format)
+            transform: Optional transform to be applied on images
+        """
         self.img_dir = Path(img_dir)
         self.label_dir = Path(label_dir)
-        # Filter for jpg images
-        self.img_names = sorted([f.name for f in self.img_dir.glob('*.jpg')])
         self.transform = transform
-
+        
+        # Get all jpg images
+        self.img_paths = sorted([str(p) for p in self.img_dir.glob('*.jpg')])
+        
     def __len__(self):
-        return len(self.img_names)
+        return len(self.img_paths)
 
     def __getitem__(self, idx):
-        img_name = self.img_names[idx]
-        img_path = self.img_dir / img_name
+        img_path = self.img_paths[idx]
+        img_name = Path(img_path).stem
         
-        # Read image
-        image = cv2.imread(str(img_path))
-        if image is None:
-            raise ValueError(f"Failed to load image: {img_path}")
+        try:
+            # Load image using PIL
+            image = Image.open(img_path).convert('RGB')
             
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
-        if self.transform:
-            image = self.transform(image)
+            # Read label from YOLO format file
+            label_path = self.label_dir / f"{img_name}.txt"
+            label = 0  # default
             
-        # Read label
-        label_path = self.label_dir / f"{Path(img_name).stem}.txt"
-        label = 0
-        if label_path.exists():
-            with open(label_path, 'r') as f:
-                # Assuming YOLO format: class x y w h
-                content = f.read().strip().split()
-                if content:
-                    label = int(content[0])
-        
-        return image, label
+            if label_path.exists():
+                with open(label_path, 'r') as f:
+                    content = f.read().strip().split()
+                    if content:
+                        label = int(content[0])  # YOLO format: class x y w h
+            
+            if self.transform:
+                image = self.transform(image)
+            
+            return image, label
+        except Exception as e:
+            print(f"Error loading {img_path}: {e}")
+            # Return a random valid image instead
+            return self.__getitem__((idx + 1) % len(self))
 
 class ArcFaceHead(nn.Module):
     def __init__(self, in_features, out_features, s=30.0, m=0.5):
@@ -68,7 +77,7 @@ class ArcFaceHead(nn.Module):
         logits *= self.s
         return logits
 
-def train(epochs=10, batch_size=32, lr=1e-4, device_type='mps'):
+def train(epochs=50, batch_size=64, lr=0.0005, device_type='mps'):
     # Setup device
     if device_type == 'cuda' and torch.cuda.is_available():
         device = torch.device('cuda')
@@ -80,32 +89,48 @@ def train(epochs=10, batch_size=32, lr=1e-4, device_type='mps'):
         device = torch.device('cpu')
         print("⚠️  Using CPU")
 
-    # Paths
+    # Paths - USE YOLO DATASET FORMAT
     PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-    DATA_ROOT = PROJECT_ROOT / 'dataset' / 'images' / 'train'
-    LABEL_ROOT = PROJECT_ROOT / 'dataset' / 'labels' / 'train'
+    DATASET_ROOT = PROJECT_ROOT / 'dataset'
+    TRAIN_IMG_DIR = DATASET_ROOT / 'images' / 'train'
+    TRAIN_LABEL_DIR = DATASET_ROOT / 'labels' / 'train'
+    VAL_IMG_DIR = DATASET_ROOT / 'images' / 'val'
+    VAL_LABEL_DIR = DATASET_ROOT / 'labels' / 'val'
     MODEL_SAVE_PATH = PROJECT_ROOT / 'models' / 'arcface_model' / 'arcface_model.pt'
     
-    if not DATA_ROOT.exists():
-        print(f"❌ Dataset not found at {DATA_ROOT}")
+    if not TRAIN_IMG_DIR.exists():
+        print(f"❌ Dataset not found at {TRAIN_IMG_DIR}")
         return
 
     # Transforms with augmentation
     transform_train = transforms.Compose([
-        transforms.ToTensor(),
         transforms.Resize((128, 128)),  # Increased from 112
         transforms.RandomCrop((112, 112)),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
         transforms.RandomRotation(15),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+    ])
+    
+    transform_val = transforms.Compose([
+        transforms.Resize((112, 112)),
+        transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
 
-    # Dataset & Loader
+    # Dataset & Loader - Load from YOLO format
     print("📁 Loading dataset...")
-    train_set = FaceDataset(DATA_ROOT, LABEL_ROOT, transform=transform_train)
+    print(f"   Dataset root: {DATASET_ROOT}")
+    
+    train_set = FaceDataset(TRAIN_IMG_DIR, TRAIN_LABEL_DIR, transform=transform_train)
+    val_set = FaceDataset(VAL_IMG_DIR, VAL_LABEL_DIR, transform=transform_val)
+    
+    print(f"   Train samples: {len(train_set)}")
+    print(f"   Val samples: {len(val_set)}")
+    
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
-    print(f"   Found {len(train_set)} images")
+    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
     # Model
     print("🏗️  Building ArcFace model...")
@@ -145,10 +170,11 @@ def train(epochs=10, batch_size=32, lr=1e-4, device_type='mps'):
 
     # Loop
     print(f"🎯 Starting training for {epochs} epochs...")
-    best_acc = 0.0
+    best_val_acc = 0.0
     step = 0
     
     for epoch in range(epochs):
+        # Training phase
         backbone.train()
         arcface_head.train()
         
@@ -190,29 +216,58 @@ def train(epochs=10, batch_size=32, lr=1e-4, device_type='mps'):
             _, preds = torch.max(logits, 1)
             correct += (preds == labels).sum().item()
             total += labels.size(0)
-            
-        epoch_loss = running_loss / len(train_loader)
-        epoch_acc = correct / total * 100
-        print(f'Epoch {epoch+1}/{epochs} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.2f}% LR: {optimizer.param_groups[0]["lr"]:.6f}')
         
-        # Save best model
-        if epoch_acc > best_acc:
-            best_acc = epoch_acc
+        train_loss = running_loss / len(train_loader)
+        train_acc = correct / total * 100
+        
+        # Validation phase
+        backbone.eval()
+        arcface_head.eval()
+        val_loss = 0.0
+        val_correct = 0
+        val_total = 0
+        
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images, labels = images.to(device), labels.to(device)
+                
+                features = backbone(images)
+                logits = arcface_head(features, labels)
+                loss = criterion(logits, labels)
+                
+                val_loss += loss.item()
+                _, preds = torch.max(logits, 1)
+                val_correct += (preds == labels).sum().item()
+                val_total += labels.size(0)
+        
+        val_loss = val_loss / len(val_loader)
+        val_acc = val_correct / val_total * 100
+        
+        print(f'Epoch {epoch+1}/{epochs}:')
+        print(f'  Train - Loss: {train_loss:.4f}, Acc: {train_acc:.2f}%')
+        print(f'  Val   - Loss: {val_loss:.4f}, Acc: {val_acc:.2f}%')
+        print(f'  LR: {optimizer.param_groups[0]["lr"]:.6f}')
+        
+        # Save best model based on validation accuracy
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
             torch.save({
                 'backbone': backbone.state_dict(),
                 'head': arcface_head.state_dict(),
                 'epoch': epoch,
-                'accuracy': epoch_acc
+                'train_acc': train_acc,
+                'val_acc': val_acc
             }, MODEL_SAVE_PATH)
-            print(f'  ✅ Saved best model (Acc: {epoch_acc:.2f}%)')
+            print(f'  ✅ Saved best model (Val Acc: {val_acc:.2f}%)')
 
     # Save final model
     torch.save({
         'backbone': backbone.state_dict(),
         'head': arcface_head.state_dict()
     }, MODEL_SAVE_PATH.parent / 'arcface_model_final.pt')
+    print(f'\n✅ Training complete!')
     print(f'✅ Final model saved to {MODEL_SAVE_PATH.parent / "arcface_model_final.pt"}')
-    print(f'🏆 Best accuracy: {best_acc:.2f}%')
+    print(f'🏆 Best validation accuracy: {best_val_acc:.2f}%')
 
 def main():
     train(epochs=50, batch_size=64, lr=0.0005, device_type='mps')  # Optimized hyperparameters
