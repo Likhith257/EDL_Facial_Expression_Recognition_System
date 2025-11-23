@@ -188,6 +188,7 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
         import os
         import cv2
         import numpy as np
+        import torch
         from ultralytics import YOLO
         
         # Save uploaded file temporarily

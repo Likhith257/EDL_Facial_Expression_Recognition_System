@@ -60,6 +60,28 @@ export default function Recognition() {
     }
   }, []);
 
+  // Cleanup camera when component unmounts or tab changes
+  useEffect(() => {
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+        tracks.forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  // Stop camera when switching away from webcam tab
+  useEffect(() => {
+    if (activeTab !== 'webcam' && isCameraActive) {
+      // Stop camera when leaving webcam tab
+      if (videoRef.current && videoRef.current.srcObject) {
+        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+        tracks.forEach((track) => track.stop());
+        setIsCameraActive(false);
+      }
+    }
+  }, [activeTab, isCameraActive]);
+
   // Save to history when results are generated
   const saveToHistory = (image: string, results: any, detectionModel: string, recognitionModel: string) => {
     const newItem: HistoryItem = {
@@ -340,57 +362,86 @@ export default function Recognition() {
   };
 
   const startCamera = async () => {
+    console.log('🎥 Starting camera...');
+    
     try {
       setError(null);
+      setIsProcessing(true);
 
-      // Check if getUserMedia is available
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setError("Camera access is not supported in this browser or context. Please use a modern browser and ensure the page is served over HTTPS or localhost.");
-        return;
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Camera not supported in this browser');
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'user'
-        }
+        video: { width: 640, height: 480, facingMode: 'user' },
+        audio: false
       });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        // Ensure video starts playing
+
+      console.log('✅ Got camera stream:', stream);
+
+      // Wait for video element to be ready
+      let retries = 0;
+      while (!videoRef.current && retries < 10) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        retries++;
+      }
+
+      if (!videoRef.current) {
+        throw new Error('Video element not found after waiting');
+      }
+
+      videoRef.current.srcObject = stream;
+      console.log('✅ Set stream to video element');
+      
+      // Try to play immediately
+      try {
         await videoRef.current.play();
+        console.log('✅ Video playing!');
         setIsCameraActive(true);
-      }
-    } catch (err: any) {
-      let errorMessage = "Unable to access camera. ";
+        setIsProcessing(false);
+      } catch (playErr) {
+        // If immediate play fails, wait for loadedmetadata
+        console.log('⏳ Waiting for metadata...');
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Video initialization timeout'));
+          }, 5000);
 
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        errorMessage += "Camera access was denied. Please allow camera permissions in your browser settings and try again.";
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        errorMessage += "No camera found. Please connect a camera and try again.";
-      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        errorMessage += "Camera is already in use by another application. Please close other apps using the camera.";
-      } else if (err.name === 'OverconstrainedError') {
-        errorMessage += "Camera doesn't support the requested settings. Trying with default settings...";
-        // Retry with basic constraints
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            await videoRef.current.play();
-            setIsCameraActive(true);
-            return;
+            videoRef.current.onloadedmetadata = async () => {
+              clearTimeout(timeout);
+              try {
+                if (videoRef.current) {
+                  await videoRef.current.play();
+                  console.log('✅ Video playing after metadata!');
+                  resolve(true);
+                }
+              } catch (err) {
+                reject(err);
+              }
+            };
           }
-        } catch {
-          errorMessage = "Unable to access camera with any settings.";
-        }
-      } else {
-        errorMessage += `Error: ${err.message || 'Unknown error'}`;
+        });
+        setIsCameraActive(true);
+        setIsProcessing(false);
       }
 
+    } catch (err: any) {
+      console.error('❌ Camera error:', err);
+      setIsProcessing(false);
+      
+      let errorMessage = 'Unable to access camera. ';
+      if (err.name === 'NotAllowedError') {
+        errorMessage = 'Camera permission denied. Please allow camera access.';
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = 'No camera found. Please connect a webcam.';
+      } else if (err.name === 'NotReadableError') {
+        errorMessage = 'Camera is in use by another application.';
+      } else {
+        errorMessage = err.message || 'Failed to start camera.';
+      }
+      
       setError(errorMessage);
-      console.error('Camera error:', err);
     }
   };
 
@@ -745,40 +796,53 @@ export default function Recognition() {
 
               {!isBatchMode && activeTab === "webcam" && (
                 <div className="space-y-4">
-                  {!isCameraActive ? (
-                    <div className="space-y-4">
-                      <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-8 md:p-32 text-center bg-white dark:bg-slate-800">
-                        <Camera className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
-                        <p className="font-semibold text-slate-900 dark:text-white mb-1">
-                          Use your webcam to capture
-                        </p>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                          Take a photo for emotion analysis
-                        </p>
-                      </div>
+                  <div className="space-y-3">
+                    <div className="relative bg-black rounded-lg overflow-hidden" style={{ minHeight: '360px' }}>
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-auto rounded-lg"
+                        style={{ display: isCameraActive ? 'block' : 'none', minHeight: '360px', objectFit: 'cover' }}
+                      />
+                      {!isCameraActive && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
+                          <Camera className="w-12 h-12 text-slate-400 dark:text-slate-500 mb-3" />
+                          <p className="font-semibold text-white mb-1">
+                            Use your webcam to capture
+                          </p>
+                          <p className="text-sm text-slate-300 mb-4">
+                            Take a photo for emotion analysis
+                          </p>
+                        </div>
+                      )}
+                      {isCameraActive && (
+                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                          📸 Position your face in the frame
+                        </div>
+                      )}
+                    </div>
+                    <canvas ref={canvasRef} className="hidden" />
+                    {!isCameraActive ? (
                       <button
                         onClick={startCamera}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+                        disabled={isProcessing}
+                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
                       >
-                        <Camera className="w-5 h-5" />
-                        Start Webcam
+                        {isProcessing ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Starting camera...
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="w-5 h-5" />
+                            Start Webcam
+                          </>
+                        )}
                       </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="relative bg-black rounded-lg overflow-hidden">
-                        <video
-                          ref={videoRef}
-                          autoPlay
-                          playsInline
-                          muted
-                          className="w-full rounded-lg"
-                        />
-                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                          Position your face in the frame
-                        </div>
-                      </div>
-                      <canvas ref={canvasRef} className="hidden" />
+                    ) : (
                       <div className="flex gap-2">
                         <button
                           onClick={captureFrame}
@@ -794,8 +858,8 @@ export default function Recognition() {
                           Cancel
                         </button>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
 
