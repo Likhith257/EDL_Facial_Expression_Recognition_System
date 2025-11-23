@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 type DetectionModel = "yolo" | "efficientb3";
-type RecognitionModel = "yolo" | "efficientb3" | "arcface" | "swin" | "vit";
+type RecognitionModel = "yolo" | "efficientb3" | "arcface";
 
 interface HistoryItem {
   id: string;
@@ -289,9 +289,7 @@ export default function Recognition() {
       const recognitionNames: Record<RecognitionModel, string> = {
         yolo: "YOLOv8",
         efficientb3: "EfficientNet-B3",
-        arcface: "ArcFace",
-        swin: "Swin Transformer",
-        vit: "Vision Transformer (ViT)",
+        arcface: "ArcFace (ResNet-18)",
       };
 
       const faces = data.all_detections?.map((detection: any, index: number) => ({
@@ -307,20 +305,11 @@ export default function Recognition() {
         embedding: `Detected by ${data.model}`,
       })) || [];
 
-      const actualFramework = data.framework || 'yolo';
-      const displayRecognitionModel = actualFramework === 'yolo'
-        ? 'YOLOv8'
-        : actualFramework === 'efficientnetb3' || actualFramework === 'efficientb3'
-          ? 'EfficientNet-B3'
-          : actualFramework === 'arcface'
-            ? 'ArcFace (ResNet-18)'
-            : recognitionNames[recognitionModel];
-
       setResults({
         detected: faces.length > 0,
         confidence: data.confidence ? (data.confidence * 100).toFixed(1) : 0,
         detectionModel: modelNames[detectionModel],
-        recognitionModel: displayRecognitionModel,
+        recognitionModel: recognitionNames[recognitionModel],
         faces: faces,
         processingTime: processingTime,
         numFaces: data.num_faces || 0,
@@ -330,10 +319,10 @@ export default function Recognition() {
       saveToHistory(selectedImage, {
         confidence: data.confidence,
         detectionModel: modelNames[detectionModel],
-        recognitionModel: displayRecognitionModel,
+        recognitionModel: recognitionNames[recognitionModel],
         faces: faces,
         numFaces: data.num_faces || 0,
-      }, modelNames[detectionModel], displayRecognitionModel);
+      }, modelNames[detectionModel], recognitionNames[recognitionModel]);
 
       // Draw annotations on canvas
       drawAnnotations(selectedImage, faces);
@@ -521,19 +510,19 @@ export default function Recognition() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
+            <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
               Facial Expression Recognition
             </h1>
-            <p className="text-xl text-slate-600 max-w-2xl mx-auto">
+            <p className="text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
               Upload an image or use your webcam to detect faces and recognize emotions in real-time.
             </p>
             <div className="mt-4 flex justify-center gap-3">
               <button
                 onClick={() => setShowHistory(!showHistory)}
-                className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg transition flex items-center gap-2"
+                className="px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg transition flex items-center gap-2"
               >
                 <History className="w-4 h-4" />
                 History ({history.length})
@@ -542,7 +531,7 @@ export default function Recognition() {
                 onClick={() => setIsBatchMode(!isBatchMode)}
                 className={`px-4 py-2 border rounded-lg transition flex items-center gap-2 ${isBatchMode
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white hover:bg-slate-50 border-slate-300 text-slate-700'
+                    : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300'
                   }`}
               >
                 <FileImage className="w-4 h-4" />
@@ -553,9 +542,9 @@ export default function Recognition() {
 
           {/* History Panel */}
           {showHistory && history.length > 0 && (
-            <div className="mb-8 bg-white rounded-lg border border-slate-200 p-6">
+            <div className="mb-8 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+                <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                   <History className="w-5 h-5" />
                   Recent Analysis
                 </h3>
@@ -588,12 +577,12 @@ export default function Recognition() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 -mb-px">
             <div className="lg:col-span-2 space-y-6">
               {!isBatchMode && (
-                <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
+                <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
                   <button
                     onClick={() => handleTabChange("upload")}
                     className={`flex-1 px-4 py-2 rounded-md font-medium transition ${activeTab === "upload"
-                        ? "bg-white text-blue-600 shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
+                        ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                       }`}
                   >
                     <Upload className="w-4 h-4 inline mr-2" />
@@ -602,8 +591,8 @@ export default function Recognition() {
                   <button
                     onClick={() => handleTabChange("webcam")}
                     className={`flex-1 px-4 py-2 rounded-md font-medium transition ${activeTab === "webcam"
-                        ? "bg-white text-blue-600 shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
+                        ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                       }`}
                   >
                     <Camera className="w-4 h-4 inline mr-2" />
@@ -615,12 +604,12 @@ export default function Recognition() {
               {/* Batch Upload Mode */}
               {isBatchMode && (
                 <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <FileImage className="w-5 h-5 text-blue-600" />
-                      <h3 className="font-semibold text-blue-900">Batch Processing Mode</h3>
+                      <FileImage className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      <h3 className="font-semibold text-blue-900 dark:text-blue-100">Batch Processing Mode</h3>
                     </div>
-                    <p className="text-sm text-blue-700">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
                       Upload multiple images (up to 10) to process them all at once.
                     </p>
                   </div>
@@ -628,13 +617,13 @@ export default function Recognition() {
                   {selectedImages.length === 0 ? (
                     <div
                       onClick={() => batchFileInputRef.current?.click()}
-                      className="rounded-lg text-center transition border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 p-8 md:p-32 cursor-pointer"
+                      className="rounded-lg text-center transition border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950 p-8 md:p-32 cursor-pointer"
                     >
-                      <ImageIcon className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                      <p className="font-semibold text-slate-900 mb-1">
+                      <ImageIcon className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
+                      <p className="font-semibold text-slate-900 dark:text-white mb-1">
                         Click to upload multiple images
                       </p>
-                      <p className="text-sm text-slate-600">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
                         Up to 10 images • JPG, PNG, or WebP • Max 10MB each
                       </p>
                       <input
@@ -651,7 +640,7 @@ export default function Recognition() {
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                         {selectedImages.map((img, idx) => (
                           <div key={idx} className="relative">
-                            <img src={img} alt={`Batch ${idx + 1}`} className="w-full h-24 object-cover rounded-lg border-2 border-slate-200" />
+                            <img src={img} alt={`Batch ${idx + 1}`} className="w-full h-24 object-cover rounded-lg border-2 border-slate-200 dark:border-slate-700" />
                             <div className="absolute top-1 right-1 bg-black/50 text-white text-xs px-2 py-1 rounded">
                               {idx + 1}
                             </div>
@@ -677,7 +666,7 @@ export default function Recognition() {
                         </button>
                         <button
                           onClick={() => { setSelectedImages([]); setBatchResults([]); }}
-                          className="px-4 py-3 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold rounded-lg transition"
+                          className="px-4 py-3 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-lg transition"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
@@ -696,15 +685,15 @@ export default function Recognition() {
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
                       className={`rounded-lg text-center transition border-2 border-dashed p-8 md:p-32 cursor-pointer ${isDragging
-                          ? "border-blue-500 bg-blue-100"
-                          : "border-slate-300 hover:border-blue-400 hover:bg-blue-50"
+                          ? "border-blue-500 bg-blue-100 dark:bg-blue-950"
+                          : "border-slate-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950"
                         }`}
                     >
-                      <Upload className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                      <p className="font-semibold text-slate-900 mb-1">
+                      <Upload className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
+                      <p className="font-semibold text-slate-900 dark:text-white mb-1">
                         {isDragging ? "Drop image here" : "Click to upload an image"}
                       </p>
-                      <p className="text-sm text-slate-600">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
                         JPG, PNG, or WebP • Max 10MB
                       </p>
                       <input
@@ -717,7 +706,7 @@ export default function Recognition() {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <div className="relative bg-white rounded-lg overflow-hidden border border-slate-200">
+                      <div className="relative bg-white dark:bg-slate-800 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
                         <img
                           src={selectedImage}
                           alt="Selected"
@@ -730,22 +719,22 @@ export default function Recognition() {
                         )}
                       </div>
                       {imageSize && (
-                        <div className="text-xs text-slate-500 text-center">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
                           {imageSize.width} × {imageSize.height} pixels
                         </div>
                       )}
                     </div>
                   )}
                   {!selectedImage && (
-                    <div className="border border-slate-200 rounded-lg p-6 text-center bg-white">
+                    <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-6 text-center bg-white dark:bg-slate-800">
                       <div className="flex flex-col items-center justify-center h-full mb-8">
-                        <div className="p-4 bg-blue-100 rounded-full mb-4">
-                          <Camera className="w-8 h-8 text-blue-600" />
+                        <div className="p-4 bg-blue-100 dark:bg-blue-950 rounded-full mb-4">
+                          <Camera className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                         </div>
-                        <div className="text-slate-600 mb-2">
+                        <div className="text-slate-600 dark:text-slate-400 mb-2">
                           Ready to analyze facial expressions
                         </div>
-                        <div className="text-sm text-slate-500">
+                        <div className="text-sm text-slate-500 dark:text-slate-400">
                           Upload an image or capture from webcam to begin
                         </div>
                       </div>
@@ -758,12 +747,12 @@ export default function Recognition() {
                 <div className="space-y-4">
                   {!isCameraActive ? (
                     <div className="space-y-4">
-                      <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 md:p-32 text-center bg-white">
-                        <Camera className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                        <p className="font-semibold text-slate-900 mb-1">
+                      <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-8 md:p-32 text-center bg-white dark:bg-slate-800">
+                        <Camera className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
+                        <p className="font-semibold text-slate-900 dark:text-white mb-1">
                           Use your webcam to capture
                         </p>
-                        <p className="text-sm text-slate-600 mb-4">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                           Take a photo for emotion analysis
                         </p>
                       </div>
@@ -838,7 +827,7 @@ export default function Recognition() {
                   </button>
                   <button
                     onClick={handleClear}
-                    className="px-4 py-3 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold rounded-lg transition flex items-center justify-center gap-2"
+                    className="px-4 py-3 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-lg transition flex items-center justify-center gap-2"
                     title="Clear image and results"
                   >
                     <Trash2 className="w-5 h-5" />
@@ -848,21 +837,21 @@ export default function Recognition() {
             </div>
 
             <div className="mb-2 pl-px">
-              <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-4">
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 space-y-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <Settings className="w-5 h-5 text-blue-600" />
-                  <h3 className="font-semibold text-slate-900">
+                  <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <h3 className="font-semibold text-slate-900 dark:text-white">
                     Model Settings
                   </h3>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center justify-between">
                     <span className="flex items-center gap-2">
                       <Sliders className="w-4 h-4" />
                       Confidence Threshold
                     </span>
-                    <span className="text-blue-600 font-semibold">{confidenceThreshold}%</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-semibold">{confidenceThreshold}%</span>
                   </label>
                   <input
                     type="range"
@@ -875,15 +864,15 @@ export default function Recognition() {
                         drawAnnotations(selectedImage, results.faces);
                       }
                     }}
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
                   />
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Only show detections above {confidenceThreshold}% confidence
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Detection Model
                   </label>
                   <select
@@ -891,14 +880,14 @@ export default function Recognition() {
                     onChange={(e) =>
                       setDetectionModel(e.target.value as DetectionModel)
                     }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                   >
                     <option value="yolo">YOLOv8 (Fast & Accurate)</option>
                     <option value="efficientb3">
                       EfficientNet-B3 (Efficient)
                     </option>
                   </select>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     {detectionModel === "yolo"
                       ? "State-of-the-art real-time detection with 95%+ accuracy"
                       : "Efficient CNN with attention mechanism for mobile deployment"}
@@ -906,7 +895,7 @@ export default function Recognition() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                     Recognition Model
                   </label>
                   <select
@@ -914,49 +903,35 @@ export default function Recognition() {
                     onChange={(e) =>
                       setRecognitionModel(e.target.value as RecognitionModel)
                     }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                   >
                     <option value="yolo">YOLOv8 (Fast Detection) ✓</option>
                     <option value="efficientb3">
                       EfficientNet-B3 (Lightweight) ✓
                     </option>
                     <option value="arcface">ArcFace (ResNet-18) ✓</option>
-                    <option value="swin" disabled>Swin Transformer (Coming Soon)</option>
-                    <option value="vit" disabled>Vision Transformer (Coming Soon)</option>
                   </select>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     {recognitionModel === "yolo"
                       ? "Fast detection with 7 emotion classes (angry, disgust, fear, happy, neutral, sad, surprised)"
                       : recognitionModel === "efficientb3"
                         ? "EfficientNet-B3 with CBAM attention for improved accuracy"
-                        : recognitionModel === "arcface"
-                          ? "ArcFace with ResNet-18 backbone and angular margin loss"
-                          : recognitionModel === "swin"
-                            ? "⚠️ Not yet implemented - will use YOLO"
-                            : "⚠️ Not yet implemented - will use YOLO"}
+                        : "ArcFace with ResNet-18 backbone and angular margin loss"}
                   </p>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-xs text-blue-800">
-                    <span className="font-semibold">Available Models:</span> YOLOv8, EfficientNet-B3, and ArcFace are fully implemented. Swin and ViT are coming soon.
+                <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  <p className="text-xs text-blue-800 dark:text-blue-200">
+                    <span className="font-semibold">Available Models:</span> YOLOv8, EfficientNet-B3, and ArcFace are fully implemented.
                   </p>
                 </div>
-
-                {(recognitionModel === 'swin' || recognitionModel === 'vit') && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <p className="text-xs text-amber-800">
-                      <span className="font-semibold">⚠️ Note:</span> Selected model is not yet implemented. The system will use YOLOv8 for inference.
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
 
           {results && (
             <div className="mt-6 results-panel">
-              <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle className="w-6 h-6" />
@@ -965,12 +940,12 @@ export default function Recognition() {
                     </span>
                   </div>
 
-                  <div className="bg-slate-50 rounded-lg p-4 space-y-2 border border-slate-200">
+                  <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 space-y-2 border border-slate-200 dark:border-slate-700">
                     <div>
-                      <p className="text-xs text-slate-600 mb-1">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">
                         Detection Model
                       </p>
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
                         {results.detectionModel}
                       </p>
                     </div>
@@ -978,23 +953,23 @@ export default function Recognition() {
                       <p className="text-xs text-slate-600 mb-1">
                         Recognition Model
                       </p>
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
                         {results.recognitionModel}
                       </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-blue-50 rounded-lg p-3">
-                      <p className="text-xs text-slate-600 mb-1">
+                    <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-3">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">
                         Overall Confidence
                       </p>
-                      <p className="text-xl font-bold text-blue-600">
+                      <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
                         {results.confidence}%
                       </p>
                     </div>
-                    <div className="bg-purple-50 rounded-lg p-3">
-                      <p className="text-xs text-slate-600 mb-1">
+                    <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-3">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">
                         Processing Time
                       </p>
                       <p className="text-xl font-bold text-purple-600">
@@ -1004,27 +979,27 @@ export default function Recognition() {
                   </div>
 
                   <div>
-                    <h3 className="font-semibold text-slate-900 mb-3 text-sm">
+                    <h3 className="font-semibold text-slate-900 dark:text-white mb-3 text-sm">
                       Detected Faces ({results.faces.length})
                     </h3>
                     <div className="space-y-2">
                       {results.faces.map((face: any) => (
                         <div
                           key={face.id}
-                          className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-sm"
+                          className="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 border border-slate-200 dark:border-slate-700 text-sm"
                         >
                           <div className="flex items-start justify-between mb-2">
-                            <span className="font-medium text-slate-900">
+                            <span className="font-medium text-slate-900 dark:text-white">
                               Face #{face.id}
                             </span>
-                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                            <span className="px-2 py-1 bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 rounded text-xs font-medium">
                               {face.confidence}%
                             </span>
                           </div>
                           <div className="grid grid-cols-1 gap-1 text-xs">
                             <div>
-                              <p className="text-slate-600">Expression</p>
-                              <p className="font-medium text-slate-900 capitalize">
+                              <p className="text-slate-600 dark:text-slate-400">Expression</p>
+                              <p className="font-medium text-slate-900 dark:text-white capitalize">
                                 {face.expression}
                               </p>
                             </div>
@@ -1036,7 +1011,7 @@ export default function Recognition() {
 
                   <button
                     onClick={handleDownloadReport}
-                    className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm">
+                    className="w-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-900 dark:text-white font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm">
                     <Download className="w-4 h-4" />
                     Download Report (JSON)
                   </button>
@@ -1058,8 +1033,8 @@ export default function Recognition() {
           {/* Batch Results */}
           {isBatchMode && batchResults.length > 0 && (
             <div className="mt-6 space-y-4">
-              <div className="bg-white rounded-lg border border-slate-200 p-6">
-                <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+                <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
                   Batch Processing Results ({batchResults.length} images)
                 </h3>
@@ -1070,7 +1045,7 @@ export default function Recognition() {
                         <img src={result.image} alt={`Result ${idx + 1}`} className="w-24 h-24 object-cover rounded-lg" />
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-slate-900">Image #{idx + 1}</span>
+                            <span className="font-medium text-slate-900 dark:text-white">Image #{idx + 1}</span>
                             {result.success ? (
                               <CheckCircle className="w-5 h-5 text-green-600" />
                             ) : (
@@ -1079,11 +1054,11 @@ export default function Recognition() {
                           </div>
                           {result.success ? (
                             <>
-                              <p className="text-sm text-slate-600">
-                                Faces: <span className="font-semibold text-slate-900">{result.data.num_faces || 0}</span>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">
+                                Faces: <span className="font-semibold text-slate-900 dark:text-white">{result.data.num_faces || 0}</span>
                               </p>
-                              <p className="text-sm text-slate-600">
-                                Primary: <span className="font-semibold text-slate-900 capitalize">{result.data.expression}</span> ({(result.data.confidence * 100).toFixed(1)}%)
+                              <p className="text-sm text-slate-600 dark:text-slate-400">
+                                Primary: <span className="font-semibold text-slate-900 dark:text-white capitalize">{result.data.expression}</span> ({(result.data.confidence * 100).toFixed(1)}%)
                               </p>
                             </>
                           ) : (
@@ -1119,7 +1094,7 @@ export default function Recognition() {
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
                   }}
-                  className="w-full mt-4 bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm"
+                  className="w-full mt-4 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-900 dark:text-white font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2 text-sm"
                 >
                   <Download className="w-4 h-4" />
                   Download Batch Report

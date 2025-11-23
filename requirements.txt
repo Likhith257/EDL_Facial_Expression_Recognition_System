@@ -1,4 +1,4 @@
-# Core dependencies for YOLO-based Facial Expression Recognition
+# Core ML dependencies
 ultralytics
 torch
 torchvision
@@ -12,11 +12,12 @@ scikit-learn
 pyyaml
 tqdm
 
-# Optional for advanced features
+# Optional training enhancements
 albumentations
 tensorboard
 
-# Web server dependencies (for --serve mode)
+# Web server (optional, for --serve mode)
 fastapi
 uvicorn
 python-multipart
+

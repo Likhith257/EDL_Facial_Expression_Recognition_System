@@ -90,17 +90,21 @@ def train(epochs=10, batch_size=32, lr=1e-4, device_type='mps'):
         print(f"❌ Dataset not found at {DATA_ROOT}")
         return
 
-    # Transforms
-    transform = transforms.Compose([
+    # Transforms with augmentation
+    transform_train = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Resize((112,112)),
+        transforms.Resize((128, 128)),  # Increased from 112
+        transforms.RandomCrop((112, 112)),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
+        transforms.RandomRotation(15),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
 
     # Dataset & Loader
     print("📁 Loading dataset...")
-    train_set = FaceDataset(DATA_ROOT, LABEL_ROOT, transform=transform)
-    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=4)
+    train_set = FaceDataset(DATA_ROOT, LABEL_ROOT, transform=transform_train)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
     print(f"   Found {len(train_set)} images")
 
     # Model
@@ -116,13 +120,34 @@ def train(epochs=10, batch_size=32, lr=1e-4, device_type='mps'):
     backbone = backbone.to(device)
     arcface_head = arcface_head.to(device)
     
-    # Optimizer
-    # We need to optimize both backbone and head parameters
-    optimizer = optim.Adam(list(backbone.parameters()) + list(arcface_head.parameters()), lr=lr)
-    criterion = nn.CrossEntropyLoss()
+    # Optimizer with AdamW and weight decay
+    optimizer = optim.AdamW(
+        list(backbone.parameters()) + list(arcface_head.parameters()), 
+        lr=lr, 
+        weight_decay=0.0001,
+        betas=(0.9, 0.999)
+    )
+    
+    # Cosine annealing with warmup
+    warmup_epochs = 3
+    total_steps = len(train_loader) * epochs
+    warmup_steps = len(train_loader) * warmup_epochs
+    
+    def lr_lambda(current_step):
+        if current_step < warmup_steps:
+            return float(current_step) / float(max(1, warmup_steps))
+        progress = float(current_step - warmup_steps) / float(max(1, total_steps - warmup_steps))
+        return max(0.01, 0.5 * (1.0 + np.cos(np.pi * progress)))
+    
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)  # Added label smoothing
+    scaler = torch.cuda.amp.GradScaler() if device.type == 'cuda' else None
 
     # Loop
     print(f"🎯 Starting training for {epochs} epochs...")
+    best_acc = 0.0
+    step = 0
+    
     for epoch in range(epochs):
         backbone.train()
         arcface_head.train()
@@ -136,13 +161,29 @@ def train(epochs=10, batch_size=32, lr=1e-4, device_type='mps'):
             
             optimizer.zero_grad()
             
-            features = backbone(images)
-            logits = arcface_head(features, labels)
+            # Mixed precision training for CUDA
+            if scaler:
+                with torch.cuda.amp.autocast():
+                    features = backbone(images)
+                    logits = arcface_head(features, labels)
+                    loss = criterion(logits, labels)
+                scaler.scale(loss).backward()
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(backbone.parameters(), max_norm=1.0)
+                torch.nn.utils.clip_grad_norm_(arcface_head.parameters(), max_norm=1.0)
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                features = backbone(images)
+                logits = arcface_head(features, labels)
+                loss = criterion(logits, labels)
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(backbone.parameters(), max_norm=1.0)
+                torch.nn.utils.clip_grad_norm_(arcface_head.parameters(), max_norm=1.0)
+                optimizer.step()
             
-            loss = criterion(logits, labels)
-            loss.backward()
-            optimizer.step()
-            
+            scheduler.step()
+            step += 1
             running_loss += loss.item()
             
             # Accuracy
@@ -152,18 +193,29 @@ def train(epochs=10, batch_size=32, lr=1e-4, device_type='mps'):
             
         epoch_loss = running_loss / len(train_loader)
         epoch_acc = correct / total * 100
-        print(f'Epoch {epoch+1}/{epochs} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.2f}%')
+        print(f'Epoch {epoch+1}/{epochs} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.2f}% LR: {optimizer.param_groups[0]["lr"]:.6f}')
+        
+        # Save best model
+        if epoch_acc > best_acc:
+            best_acc = epoch_acc
+            torch.save({
+                'backbone': backbone.state_dict(),
+                'head': arcface_head.state_dict(),
+                'epoch': epoch,
+                'accuracy': epoch_acc
+            }, MODEL_SAVE_PATH)
+            print(f'  ✅ Saved best model (Acc: {epoch_acc:.2f}%)')
 
-    # Save
-    # Save both state dicts
+    # Save final model
     torch.save({
         'backbone': backbone.state_dict(),
         'head': arcface_head.state_dict()
-    }, MODEL_SAVE_PATH)
-    print(f'✅ Model saved to {MODEL_SAVE_PATH}')
+    }, MODEL_SAVE_PATH.parent / 'arcface_model_final.pt')
+    print(f'✅ Final model saved to {MODEL_SAVE_PATH.parent / "arcface_model_final.pt"}')
+    print(f'🏆 Best accuracy: {best_acc:.2f}%')
 
 def main():
-    train()
+    train(epochs=50, batch_size=64, lr=0.0005, device_type='mps')  # Optimized hyperparameters
 
 if __name__ == "__main__":
     main()

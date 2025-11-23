@@ -102,29 +102,37 @@ class FacialExpressionTrainer:
             'verbose': True,
             'plots': True,
             
-            # Optimization
-            'optimizer': 'Adam',
-            'lr0': 0.001,
-            'lrf': 0.01,
+            # Optimization - Improved for accuracy
+            'optimizer': 'AdamW',  # Better generalization
+            'lr0': 0.002,  # Slightly higher initial LR
+            'lrf': 0.001,  # Lower final LR for fine-tuning
             'momentum': 0.937,
             'weight_decay': 0.0005,
+            'warmup_epochs': 3,  # Gradual warmup
+            'warmup_momentum': 0.8,
+            'warmup_bias_lr': 0.1,
+            'cos_lr': True,  # Cosine LR scheduler
+            'label_smoothing': 0.1,  # Better generalization
             
-            # Augmentation
-            'hsv_h': 0.015,
-            'hsv_s': 0.7,
-            'hsv_v': 0.4,
-            'degrees': 0.0,
-            'translate': 0.1,
-            'scale': 0.5,
-            'flipud': 0.0,
-            'fliplr': 0.5,
-            'mosaic': 1.0,
-            'mixup': 0.0,
+            # Advanced Augmentation for facial expressions
+            'hsv_h': 0.02,  # More color variation
+            'hsv_s': 0.8,
+            'hsv_v': 0.5,
+            'degrees': 5.0,  # Slight rotation for faces
+            'translate': 0.15,  # More translation
+            'scale': 0.6,  # Better scale variation
+            'shear': 2.0,  # Add shear augmentation
+            'perspective': 0.0003,  # Perspective transform
+            'flipud': 0.0,  # No vertical flip for faces
+            'fliplr': 0.5,  # Horizontal flip OK
+            'mosaic': 1.0,  # Keep mosaic for diversity
+            'mixup': 0.1,  # Add mixup for robustness
+            'copy_paste': 0.1,  # Copy-paste augmentation
             
-            # Validation
+            # Validation - More strict
             'val': True,
-            'conf': 0.25,
-            'iou': 0.45,
+            'conf': 0.3,  # Higher confidence threshold
+            'iou': 0.5,  # Higher IoU for better NMS
         }
 
         # Adjust for memory profile

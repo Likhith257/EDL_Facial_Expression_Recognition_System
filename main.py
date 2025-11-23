@@ -238,12 +238,15 @@ def serve_web_app(framework='yolo', model_size='yolov8n', port=8000):
                         status_code=400
                     )
                 
-                # Run inference with lower confidence for better detection
+                # Run inference with optimized parameters
                 results = model.predict(
                     source=image, 
-                    conf=0.15,  # Lower confidence threshold for real-world images
-                    iou=0.45,   # NMS IoU threshold
-                    verbose=False
+                    conf=0.25,  # Balanced confidence threshold
+                    iou=0.5,   # Higher NMS IoU for better filtering
+                    max_det=10,  # Limit max detections
+                    agnostic_nms=True,  # Class-agnostic NMS
+                    verbose=False,
+                    half=True if torch.cuda.is_available() else False  # FP16 for speed
                 )[0]
                 
                 # Emotion labels
