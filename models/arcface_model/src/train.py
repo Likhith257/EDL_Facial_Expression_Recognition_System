@@ -102,13 +102,12 @@ def train(epochs=50, batch_size=64, lr=0.0005, device_type='mps'):
         print(f"❌ Dataset not found at {TRAIN_IMG_DIR}")
         return
 
-    # Transforms with augmentation
+    # Transforms with conservative augmentation (avoid overfitting)
     transform_train = transforms.Compose([
-        transforms.Resize((128, 128)),  # Increased from 112
-        transforms.RandomCrop((112, 112)),
+        transforms.Resize((112, 112)),  # Direct resize, no crop
         transforms.RandomHorizontalFlip(p=0.5),
-        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
-        transforms.RandomRotation(15),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),  # Reduced
+        transforms.RandomRotation(5),  # Reduced from 15 to 5
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
     ])
@@ -165,7 +164,7 @@ def train(epochs=50, batch_size=64, lr=0.0005, device_type='mps'):
         return max(0.01, 0.5 * (1.0 + np.cos(np.pi * progress)))
     
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
-    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)  # Added label smoothing
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.05)  # Reduced label smoothing
     scaler = torch.cuda.amp.GradScaler() if device.type == 'cuda' else None
 
     # Loop
@@ -270,7 +269,7 @@ def train(epochs=50, batch_size=64, lr=0.0005, device_type='mps'):
     print(f'🏆 Best validation accuracy: {best_val_acc:.2f}%')
 
 def main():
-    train(epochs=50, batch_size=64, lr=0.0005, device_type='mps')  # Optimized hyperparameters
+    train(epochs=40, batch_size=64, lr=0.0003, device_type='mps')  # Conservative hyperparameters
 
 if __name__ == "__main__":
     main()

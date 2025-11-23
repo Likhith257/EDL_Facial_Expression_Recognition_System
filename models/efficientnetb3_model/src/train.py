@@ -62,17 +62,12 @@ def get_transforms(split='train', img_size=224):
     """Get data transforms"""
     if split == 'train':
         return transforms.Compose([
-            transforms.Resize((img_size + 32, img_size + 32)),
-            transforms.RandomCrop((img_size, img_size)),
+            transforms.Resize((img_size, img_size)),
             transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomRotation(20),  # Increased from 15
-            transforms.RandomAffine(degrees=0, translate=(0.15, 0.15), shear=10),  # Added shear
-            transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.15),  # Increased
-            transforms.RandomGrayscale(p=0.1),
-            transforms.RandomPerspective(distortion_scale=0.2, p=0.3),  # NEW: perspective transform
+            transforms.RandomRotation(10),  # Reduced
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Reduced
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-            transforms.RandomErasing(p=0.25, scale=(0.02, 0.2))  # Increased probability
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
     else:
         return transforms.Compose([
@@ -224,7 +219,7 @@ def train(config_path=None, **kwargs):
     print(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
     
     # Loss and optimizer with label smoothing
-    criterion = nn.CrossEntropyLoss(label_smoothing=0.15)  # Increased from 0.1
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)  # Reduced from 0.15
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01, betas=(0.9, 0.999))  # Reduced weight decay
     
     # Warmup + Cosine scheduler
@@ -327,11 +322,11 @@ def main():
         config_path=CONFIG_PATH if CONFIG_PATH.exists() else None,
         dataset_path=str(DATASET_PATH),
         num_classes=7,
-        batch_size=48,  # Increased from 32 for better gradient estimates
-        epochs=120,  # Increased from 100
-        lr=0.00015,  # Increased from 0.0001
+        batch_size=32,  # Reduced from 48
+        epochs=100,  # Reduced from 120
+        lr=0.0001,  # Reduced from 0.00015 for more stable training
         img_size=224,
-        patience=25,  # Reduced from 30 for faster convergence
+        patience=20,  # Reduced from 25
         device='mps'
     )
 

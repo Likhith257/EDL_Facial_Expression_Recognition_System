@@ -102,32 +102,32 @@ class FacialExpressionTrainer:
             'verbose': True,
             'plots': True,
             
-            # Optimization - Improved for accuracy
+            # Optimization - Balanced for accuracy
             'optimizer': 'AdamW',  # Better generalization
-            'lr0': 0.002,  # Slightly higher initial LR
-            'lrf': 0.001,  # Lower final LR for fine-tuning
+            'lr0': 0.001,  # Conservative initial LR
+            'lrf': 0.01,  # Higher final LR (less aggressive decay)
             'momentum': 0.937,
             'weight_decay': 0.0005,
             'warmup_epochs': 3,  # Gradual warmup
             'warmup_momentum': 0.8,
             'warmup_bias_lr': 0.1,
             'cos_lr': True,  # Cosine LR scheduler
-            'label_smoothing': 0.1,  # Better generalization
+            'label_smoothing': 0.0,  # No label smoothing for clearer learning
             
-            # Advanced Augmentation for facial expressions
-            'hsv_h': 0.02,  # More color variation
-            'hsv_s': 0.8,
-            'hsv_v': 0.5,
-            'degrees': 5.0,  # Slight rotation for faces
-            'translate': 0.15,  # More translation
-            'scale': 0.6,  # Better scale variation
-            'shear': 2.0,  # Add shear augmentation
-            'perspective': 0.0003,  # Perspective transform
+            # Conservative Augmentation for facial expressions
+            'hsv_h': 0.01,  # Minimal hue variation (faces have consistent skin tones)
+            'hsv_s': 0.4,  # Reduced saturation
+            'hsv_v': 0.3,  # Reduced brightness
+            'degrees': 3.0,  # Minimal rotation (faces are usually upright)
+            'translate': 0.1,  # Minimal translation
+            'scale': 0.3,  # Conservative scale variation
+            'shear': 0.0,  # No shear (distorts facial features)
+            'perspective': 0.0,  # No perspective (distorts faces)
             'flipud': 0.0,  # No vertical flip for faces
             'fliplr': 0.5,  # Horizontal flip OK
-            'mosaic': 1.0,  # Keep mosaic for diversity
-            'mixup': 0.1,  # Add mixup for robustness
-            'copy_paste': 0.1,  # Copy-paste augmentation
+            'mosaic': 0.5,  # Reduced mosaic
+            'mixup': 0.0,  # No mixup (confuses facial features)
+            'copy_paste': 0.0,  # No copy-paste (inappropriate for faces)
             
             # Validation - More strict
             'val': True,
