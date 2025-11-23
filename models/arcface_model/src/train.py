@@ -269,7 +269,7 @@ def train(epochs=50, batch_size=64, lr=0.0005, device_type='mps'):
     print(f'🏆 Best validation accuracy: {best_val_acc:.2f}%')
 
 def main():
-    train(epochs=40, batch_size=64, lr=0.0003, device_type='mps')  # Conservative hyperparameters
+    train(epochs=100, batch_size=64, lr=0.0003, device_type='mps')  # Conservative hyperparameters
 
 if __name__ == "__main__":
     main()
